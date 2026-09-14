@@ -526,15 +526,9 @@ class BaseSimulator extends Simulator {
       }
     }
 
-    // Update supporting block if on-ground
+    // Entity.move updates support from the collision, even when a web cleared stored velocity.
     if (user.meta().protocol().trailsAndTailsUpdate() && result != null) {
-      Motion actualMotion = result.actualMotion();
-
-      if (actualMotion != null && Math.abs(actualMotion.motionY()) > 0) {
-        boolean verticalCollision = result.offsetMotionDiffersFromActualMotionInY();
-        boolean verticalCollisionBelow = verticalCollision && actualMotion.motionY < 0.0;
-        environment.checkSupportingBlock(verticalCollisionBelow, motion);
-      }
+      environment.checkSupportingBlock(result.onGround(), result.offsetMotion());
       environment.compileSpecialBlocks();
     }
 

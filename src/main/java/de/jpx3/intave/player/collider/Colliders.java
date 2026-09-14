@@ -65,7 +65,7 @@ public final class Colliders {
     double positionX, double positionY, double positionZ
   ) {
     // Apply motion multiplier
-    Vector motionMultiplier = user.meta().movement().motionMultiplier();
+    Vector motionMultiplier = environment.motionMultiplier();
     if (motionMultiplier != null) {
       motion.motionX *= motionMultiplier.getX();
       motion.motionY *= motionMultiplier.getY();

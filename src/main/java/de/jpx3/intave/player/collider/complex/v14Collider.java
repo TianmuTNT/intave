@@ -19,6 +19,7 @@ import de.jpx3.intave.share.Motion;
 import de.jpx3.intave.user.User;
 
 import static de.jpx3.intave.share.Direction.Axis.*;
+import static de.jpx3.intave.user.meta.ProtocolMetadata.VER_1_20_5;
 
 public final class v14Collider implements Collider {
   @Override
@@ -32,7 +33,7 @@ public final class v14Collider implements Collider {
     boolean inWeb
   ) {
     // webs
-    if (inWeb) {
+    if (inWeb && (user.protocolVersion() < VER_1_20_5 || environment.motionMultiplier() == null)) {
       offsetMotion.motionX *= 0.25D;
       offsetMotion.motionY *= 0.05f;
       offsetMotion.motionZ *= 0.25D;

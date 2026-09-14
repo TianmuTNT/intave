@@ -40,7 +40,7 @@ public final class v21Collider implements Collider {
     boolean inWeb
   ) {
     // webs
-    if (inWeb) {
+    if (inWeb && environment.motionMultiplier() == null) {
       offsetMotion.motionX *= 0.25D;
       offsetMotion.motionY *= 0.05f;
       offsetMotion.motionZ *= 0.25D;

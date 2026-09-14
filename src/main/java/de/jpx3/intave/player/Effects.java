@@ -9,6 +9,7 @@ import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 
 import static de.jpx3.intave.user.meta.ProtocolMetadata.VER_1_13;
+import static de.jpx3.intave.user.meta.ProtocolMetadata.VER_1_20_5;
 
 public final class Effects {
   public static final PotionEffectType EFFECT_LEVITATION;
@@ -67,6 +68,19 @@ public final class Effects {
     // we should replace this with a more lag-proof method
     for (PotionEffect activePotionEffect : player.getActivePotionEffects()) {
       if (activePotionEffect.getType().equals(type)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  public static boolean weavingEffectActive(Player player) {
+    if (UserRepository.userOf(player).protocolVersion() < VER_1_20_5) {
+      return false;
+    }
+    for (PotionEffect effect : player.getActivePotionEffects()) {
+      String name = effect.getType().getName();
+      if ("WEAVING".equals(name) || "minecraft:weaving".equals(name)) {
         return true;
       }
     }

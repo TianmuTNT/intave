@@ -736,6 +736,7 @@ final class MovementRecordingPhysicsTests {
 	}
 
 	private static void preparePhysicsTestRuntime(MovementRecording recording) {
+		ReplayPotionRegistry.initialize();
 		MinecraftVersion serverVersion = recording.serverVersion();
 		MinecraftVersion.setCurrent(serverVersion);
 		DrillResolver.manualInit(DenyShapeResolverPipeline.create());

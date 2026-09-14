@@ -14,14 +14,18 @@ package de.jpx3.intave.block.physics;
 import de.jpx3.intave.adapter.MinecraftVersion;
 import de.jpx3.intave.block.type.BlockTypeAccess;
 import de.jpx3.intave.check.movement.physics.environment.SimulationEnvironment;
+import de.jpx3.intave.player.Effects;
 import de.jpx3.intave.share.BlockPosition;
 import de.jpx3.intave.share.Motion;
 import de.jpx3.intave.share.Position;
 import de.jpx3.intave.user.User;
 import org.bukkit.Material;
+import org.bukkit.util.Vector;
 
 import java.util.Collections;
 import java.util.List;
+
+import static de.jpx3.intave.user.meta.ProtocolMetadata.VER_1_20_5;
 
 final class WebPhysics implements BlockPhysic {
   private List<Material> material;
@@ -34,6 +38,10 @@ final class WebPhysics implements BlockPhysic {
   @Override
   public Motion entityInside(User user, SimulationEnvironment environment, BlockPosition location, Position from, Motion motion, boolean insideBlockOrTooFast) {
     environment.setInWeb(true);
+    if (user.protocolVersion() >= VER_1_20_5) {
+      boolean weaving = !environment.isInVehicle() && Effects.weavingEffectActive(user.player());
+      environment.setMotionMultiplier(weaving ? new Vector(0.5D, 0.25D, 0.5D) : new Vector(0.25D, 0.05F, 0.25D));
+    }
     environment.resetFallDistance();
     return null;
   }
