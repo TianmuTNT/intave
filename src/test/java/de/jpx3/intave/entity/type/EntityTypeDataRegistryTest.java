@@ -61,4 +61,22 @@ final class EntityTypeDataRegistryTest {
     assertNull(registry.resolveFor(-1, true));
     assertNull(registry.resolveFor(Integer.MAX_VALUE, false));
   }
+
+  @Test
+  void loads263RegistryWithShiftedIdsAndNewEntities() {
+    EntityTypeDataRegistry registry = new EntityTypeDataRegistry(new MinecraftVersion("26.3"));
+    assertEquals("cushion", registry.resolveFor(33, false).name());
+    assertEquals(0.25F, registry.resolveFor(33, false).size().height());
+    assertEquals("poplar_boat", registry.resolveFor(106, false).name());
+    assertEquals("poplar_chest_boat", registry.resolveFor(107, false).name());
+    assertEquals("player", registry.resolveFor(159, true).name());
+    assertEquals("fishing_bobber", registry.resolveFor(160, false).name());
+    assertEquals(0.55F, registry.resolveFor(11, true).size().width());
+    for (int id = 0; id <= 160; id++) {
+      assertTrue(registry.resolveFor(id, true) != null, "Missing entity " + id);
+      assertTrue(registry.resolveFor(id, false) != null, "Missing entity " + id);
+    }
+    assertNull(registry.resolveFor(161, false));
+    assertEquals("player", new EntityTypeDataRegistry(new MinecraftVersion("26.2")).resolveFor(155, true).name());
+  }
 }

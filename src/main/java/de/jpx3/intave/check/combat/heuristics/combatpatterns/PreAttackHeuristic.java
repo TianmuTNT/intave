@@ -101,7 +101,7 @@ public final class PreAttackHeuristic extends ClassicHeuristic<PreAttackHeuristi
     if (entity == null || !entity.clientSynchronized || movementData.ticksPast(TELEPORT) < 5) {
       return;
     }
-    if (clientData.outdatedClient()) {
+    if (clientData.outdatedClient() || !clientData.sendsAttackSwingPackets()) {
       return;
     }
     boolean dead = entity.fakeDead || entity.dead;

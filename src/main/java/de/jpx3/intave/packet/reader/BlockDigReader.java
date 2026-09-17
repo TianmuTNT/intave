@@ -16,6 +16,11 @@ import de.jpx3.intave.annotate.Nullable;
 
 public final class BlockDigReader extends BlockPositionReader {
   public @Nullable EnumWrappers.PlayerDigType action() {
-    return packet().getPlayerDigTypes().readSafely(0);
+    try {
+      return packet().getPlayerDigTypes().readSafely(0);
+    } catch (IllegalArgumentException exception) {
+      // New actions such as 26.3's CHANGE_DESTROY_DIRECTION may precede ProtocolLib's enum.
+      return null;
+    }
   }
 }

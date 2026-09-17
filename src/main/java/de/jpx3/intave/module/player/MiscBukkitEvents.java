@@ -79,7 +79,8 @@ public final class MiscBukkitEvents extends Module {
     if (IntaveControl.DEBUG_TELEPORT_CAUSE_AND_CAUSER) {
       PluginInvocation pluginInvocation = Caller.pluginInfo(false);
       String pluginClass = pluginInvocation == null ? "no other plugin" : pluginInvocation.className();
-      teleport.getPlayer().sendMessage("Teleport " + teleport.getCause() + " " + teleport.getTo() + " by " + pluginClass);
+      User user = UserRepository.userOf(teleport.getPlayer());
+      user.sendMessage("Teleport " + teleport.getCause() + " " + teleport.getTo() + " by " + pluginClass);
     }
   }
 
@@ -173,7 +174,7 @@ public final class MiscBukkitEvents extends Module {
         event.setCancelled(true);
       }
       if (user.receives(MessageChannel.DEBUG_ITEM_RESETS)) {
-        user.player().sendMessage(IntavePlugin.prefix() + " Cancelled your arrow shot to sync with the server");
+        user.sendMessage(IntavePlugin.prefix() + " Cancelled your arrow shot to sync with the server");
       }
       inventory.blockNextArrow = false;
     }

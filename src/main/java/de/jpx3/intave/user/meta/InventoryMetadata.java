@@ -16,7 +16,6 @@ import de.jpx3.intave.IntavePlugin;
 import de.jpx3.intave.adapter.MinecraftVersions;
 import de.jpx3.intave.annotate.Nullable;
 import de.jpx3.intave.block.type.MaterialSearch;
-import de.jpx3.intave.executor.Synchronizer;
 import de.jpx3.intave.player.Enchantments;
 import de.jpx3.intave.player.ItemProperties;
 import de.jpx3.intave.user.MessageChannel;
@@ -166,9 +165,7 @@ public final class InventoryMetadata {
 
       if (IntaveControl.DEBUG_ITEM_USAGE) {
         Material activeItem = this.activeItemType;
-        Synchronizer.synchronize(user, () -> {
-          player.sendMessage("Item usage started: " + activeItem);
-        });
+        user.sendMessage("Item usage started: " + activeItem);
       }
     } finally {
       handActiveLock.unlock();
@@ -200,9 +197,7 @@ public final class InventoryMetadata {
       this.deactivatedItemThisTick = true;
       Material activeItem = this.activeItemType;
       if (IntaveControl.DEBUG_ITEM_USAGE) {
-        Synchronizer.synchronize(user, () -> {
-          player.sendMessage("Item usage ended: " + activeItem);
-        });
+        user.sendMessage("Item usage ended: " + activeItem);
 //        Thread.dumpStack();
         System.out.println("Item usage ended: " + activeItem);
       }
@@ -218,7 +213,7 @@ public final class InventoryMetadata {
 
   public void releaseItemNextTick() {
     if (IntaveControl.DEBUG_ITEM_USAGE) {
-      player.sendMessage("Forceful item release next tick");
+      user.sendMessage("Forceful item release next tick");
     }
     releaseItemNextTick = true;
     releaseItemType = heldItemType();
@@ -289,7 +284,7 @@ public final class InventoryMetadata {
     if (inventoryOpen != this.inventoryOpen) {
       releaseItemNextTick();
       if (user.receives(MessageChannel.DEBUG_ITEM_RESETS)) {
-        user.player().sendMessage(IntavePlugin.prefix() + "Requesting item usage reset as " + ChatColor.RED + " inventory was toggled ");
+        user.sendMessage(IntavePlugin.prefix() + "Requesting item usage reset as " + ChatColor.RED + " inventory was toggled ");
       }
     }
 //    deactivateHand();

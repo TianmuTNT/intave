@@ -20,10 +20,10 @@ public final class SibylMessageTransmitter {
 //      SibylPacketOutMessage packet = new SibylPacketOutMessage();
 //      packet.setMessage(String.format(message, (Object[]) args));
 //      sibyl.sendTrustedPacket(player, packet);
-      player.sendMessage(ChatColor.RED + "(insecure) " + ChatColor.RESET + String.format(message, (Object[]) args));
+      user.sendMessage(ChatColor.RED + "(insecure) " + ChatColor.RESET + String.format(message, (Object[]) args));
     } else {
       // for now, just send the message to the player
-      player.sendMessage(ChatColor.RED + "(insecure) " + ChatColor.RESET + String.format(message, (Object[]) args));
+      user.sendMessage(ChatColor.RED + "(insecure) " + ChatColor.RESET + String.format(message, (Object[]) args));
     }
   }
 }

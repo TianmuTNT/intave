@@ -93,8 +93,9 @@ dependencies {
   compileOnly("com.github.retrooper:packetevents-spigot:2.13.0")
 
   // Test environment.
-  testImplementation("org.spigotmc:spigot-api:26.2-R0.1-SNAPSHOT")
+  testImplementation("org.spigotmc:spigot-api:26.3-R0.1-SNAPSHOT")
   testImplementation("net.dmulloy2:ProtocolLib:5.4.0")
+  testCompileOnly("org.jetbrains:annotations:23.1.0")
   testImplementation("io.netty:netty-all:4.2.15.Final")
   testImplementation("org.junit.jupiter:junit-jupiter-api:5.10.2")
   testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:5.10.2")
@@ -328,13 +329,26 @@ val paperRunConfigs = mapOf(
   Pair("1.21.11", 25),
   Pair("26.1.2", 25),
   Pair("26.2", 25),
+  Pair("26.3", 25),
 )
+
+// CI reads the same version list used to register the native server test tasks.
+tasks.register("exportPaperTestMatrix") {
+  val matrix = layout.buildDirectory.file("paper-test-matrix.json")
+  inputs.property("versions", paperRunConfigs.keys.toList())
+  outputs.file(matrix)
+  doLast {
+    val output = matrix.get().asFile
+    output.parentFile.mkdirs()
+    output.writeText(paperRunConfigs.keys.joinToString(prefix = "{\"version\":[", postfix = "]}\n") { "\"$it\"" })
+  }
+}
 
 val foliaRunConfigs = mapOf(
   Pair("26.1.2", 25)
 )
 
-val protocolLibPreloadVersions = setOf("1.21.11", "26.1.2", "26.2")
+val protocolLibPreloadVersions = setOf("1.21.11", "26.1.2", "26.2", "26.3")
 val protocolLibDevUrl = "https://github.com/dmulloy2/ProtocolLib/releases/download/dev-build/ProtocolLib.jar"
 
 data class McpRebornJvm(
@@ -406,7 +420,8 @@ val mcpRebornClientConfigs = mapOf(
 
 run {
   val clientVersions = paperRunConfigs.keys.filter(::supportsMcpRebornClient)
-  val missingClientConfigs = clientVersions.filterNot(mcpRebornClientConfigs::containsKey)
+  // MCP-Reborn has no 26.3 source template yet; its official client is already unobfuscated.
+  val missingClientConfigs = clientVersions.filterNot { it == "26.3" || it in mcpRebornClientConfigs }
   check(missingClientConfigs.isEmpty()) {
     "Missing MCP-Reborn client configuration for: ${missingClientConfigs.joinToString()}"
   }
@@ -685,7 +700,7 @@ fun registerPaperTestTask(serverVersion: String, javaVersion: Int) {
   tasks.register<RunServer>("testPaper${serverVersion.taskSuffix()}") {
     group = IntaveTaskGroups.SERVER_TESTS
     description = "Runs the Intave server test on Paper $serverVersion"
-    dependsOn("shadowJar")
+    dependsOn("shadowJar", "testProtocolResources")
     pluginJars.from(tasks.named("shadowJar"))
     minecraftVersion(serverVersion)
     // Minecraft 1.8.8 requires special patches to work with Java 17
@@ -747,8 +762,11 @@ fun registerPaperRunTask(serverVersion: String, javaVersion: Int) {
       if (serverVersion in protocolLibPreloadVersions) {
         url(protocolLibDevUrl)
       }
-      modrinth("viaversion", "5.11.0")
-      modrinth("viabackwards", "5.11.0")
+      // The current public Via releases support up to 26.2.
+      if (serverVersion != "26.3") {
+        modrinth("viaversion", "5.11.0")
+        modrinth("viabackwards", "5.11.0")
+      }
     }
     runDirectory(File("runs/paper_${serverVersion}-j$javaVersion"))
     jvmArgs("-Dcom.mojang.eula.agree=true")

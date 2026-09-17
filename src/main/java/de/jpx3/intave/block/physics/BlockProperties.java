@@ -37,10 +37,11 @@ public final class BlockProperties {
     Property.builderFor("BLUE_ICE").slipperiness(0.989f).buildAndSave();
     Property.builderFor(SLIME_BLOCK).slipperiness(0.8f).bounceRestitution(1.0F).buildAndSave();
     for (Material material : Material.values()) {
-      if (material.name().endsWith("_BED") || material.name().equals("BED_BLOCK")) {
+      if ((material.name().endsWith("_BED") && !material.name().equals("STRAW_BED")) || material.name().equals("BED_BLOCK")) {
         Property.builderFor(material).bounceRestitution(0.75F).buildAndSave();
       }
     }
+    Property.builderFor("SHELF_MUSHROOM").bounceRestitution(0.75F).buildAndSave();
     Property.builderFor(LADDER, VINE).climbable().doesNotBlockMovement().buildAndSave();
     Property.builderFor("SCAFFOLDING").climbable().withoutClimbableSneakLimit().doesNotBlockMovement().buildAndSave();
     Property.builderFor("WEEPING_VINES", "WEEPING_VINES_PLANT").climbable().doesNotBlockMovement().buildAndSave();

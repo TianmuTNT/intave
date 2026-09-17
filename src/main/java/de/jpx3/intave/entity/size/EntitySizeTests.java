@@ -11,6 +11,10 @@
 
 package de.jpx3.intave.entity.size;
 
+import de.jpx3.intave.adapter.MinecraftVersions;
+import de.jpx3.intave.klass.Lookup;
+import de.jpx3.intave.entity.type.EntityTypeData;
+import de.jpx3.intave.entity.type.EntityTypeDataAccessor;
 import de.jpx3.intave.reflect.access.ReflectiveHandleAccess;
 import de.jpx3.intave.test.IntegrationTests;
 import de.jpx3.intave.test.Severity;
@@ -23,6 +27,33 @@ import org.bukkit.entity.Sheep;
 public final class EntitySizeTests extends IntegrationTests {
   public EntitySizeTests() {
     super("ES");
+  }
+
+  @Test(testCode = "native-registry", severity = Severity.ERROR)
+  public void testNativeEntityRegistry() throws ReflectiveOperationException {
+    if (MinecraftVersions.VER26_3.below()) return;
+    Object registry = Lookup.serverField("IRegistry", "ENTITY_TYPE").get(null);
+    java.lang.reflect.Method getId = registry.getClass().getMethod("getId", Object.class);
+    java.lang.reflect.Method getKey = registry.getClass().getMethod("getKey", Object.class);
+    java.lang.reflect.Method getDimensions = Lookup.serverClass("EntityTypes").getMethod("getDimensions");
+    int count = 0;
+    for (Object type : (Iterable<?>) registry) {
+      int id = (int) getId.invoke(registry, type);
+      EntityTypeData entry = EntityTypeDataAccessor.resolveFromId(id, false);
+      if (entry == null) fail("Missing native entity ID " + id);
+      String key = getKey.invoke(registry, type).toString();
+      if (entry.typeId() != id || !("minecraft:" + entry.name()).equals(key)) {
+        fail("Incorrect native entity mapping at " + id + ": " + key);
+      }
+      Object size = getDimensions.invoke(type);
+      float width = (float) size.getClass().getMethod("width").invoke(size);
+      float height = (float) size.getClass().getMethod("height").invoke(size);
+      if (entry.size().width() != width || entry.size().height() != height) {
+        fail("Incorrect native dimensions for " + key);
+      }
+      count++;
+    }
+    if (EntityTypeDataAccessor.resolveFromId(count, false) != null) fail("Unexpected stored entity ID " + count);
   }
 
   @Test(

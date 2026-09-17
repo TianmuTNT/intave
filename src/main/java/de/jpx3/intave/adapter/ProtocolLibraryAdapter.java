@@ -14,10 +14,16 @@ package de.jpx3.intave.adapter;
 import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.utility.MinecraftReflection;
+import com.comphenix.protocol.reflect.accessors.Accessors;
 import com.comphenix.protocol.wrappers.EnumWrappers;
 import de.jpx3.intave.IntaveLogger;
 import de.jpx3.intave.access.InvalidDependencyException;
 import org.bukkit.Bukkit;
+import org.bukkit.Material;
+import org.bukkit.inventory.ItemStack;
+
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 
 import java.util.Arrays;
 
@@ -77,6 +83,52 @@ public final class ProtocolLibraryAdapter {
 
     if (!temporaryPlayer || !byteBuddyExists) {
       IntaveLogger.logger().info("Consider updating ProtocolLib");
+    }
+  }
+
+  /** Bridge the renamed CraftBukkit mirror method until ProtocolLib handles it itself. */
+  public static void prepareItemStackConversion() {
+    if (MinecraftVersions.VER26_3.below()) {
+      return;
+    }
+    ItemStack probe = new ItemStack(Material.STONE);
+    Object nativeProbe = MinecraftReflection.getMinecraftItemStack(probe);
+    try {
+      verifyItemStackConversion(nativeProbe, probe);
+      // Leave working ProtocolLib versions and an already-installed bridge untouched.
+      return;
+    } catch (RuntimeException originalFailure) {
+      Throwable cause = originalFailure.getCause();
+      if (!(cause instanceof NoSuchMethodException) || !cause.getMessage().contains(".asCraftMirror(")) {
+        throw originalFailure;
+      }
+      try {
+        Method mirror = MinecraftReflection.getCraftItemStackClass().getMethod(
+          "asBukkitMirror", MinecraftReflection.getItemStackClass());
+        // All ProtocolLib item, list and equipment converters share this cached accessor.
+        // The accessor belongs to ProtocolLib and only retains the CraftBukkit method.
+        Field mirrorCache = MinecraftReflection.class.getDeclaredField("asCraftMirror");
+        mirrorCache.setAccessible(true);
+        Object previous = mirrorCache.get(null);
+        mirrorCache.set(null, Accessors.getMethodAccessor(mirror));
+        try {
+          verifyItemStackConversion(nativeProbe, probe);
+        } catch (RuntimeException verificationFailure) {
+          mirrorCache.set(null, previous);
+          throw verificationFailure;
+        }
+      } catch (ReflectiveOperationException | RuntimeException bridgeFailure) {
+        originalFailure.addSuppressed(bridgeFailure);
+        throw new InvalidDependencyException("Unable to adapt ProtocolLib item conversion for Minecraft 26.3", originalFailure);
+      }
+      IntaveLogger.logger().info("Adapted ProtocolLib item conversion for Minecraft 26.3");
+    }
+  }
+
+  private static void verifyItemStackConversion(Object nativeItem, ItemStack expected) {
+    ItemStack converted = MinecraftReflection.getBukkitItemStack(nativeItem);
+    if (!expected.equals(converted)) {
+      throw new IllegalStateException("ProtocolLib item conversion did not preserve the probe item");
     }
   }
 

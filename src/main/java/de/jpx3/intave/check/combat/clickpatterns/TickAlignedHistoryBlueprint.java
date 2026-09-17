@@ -10,6 +10,7 @@ import de.jpx3.intave.module.Modules;
 import de.jpx3.intave.module.linker.packet.ListenerPriority;
 import de.jpx3.intave.module.linker.packet.PacketSubscription;
 import de.jpx3.intave.module.violation.Violation;
+import de.jpx3.intave.packet.reader.BlockDigReader;
 import de.jpx3.intave.packet.reader.EntityUseReader;
 import de.jpx3.intave.packet.reader.PacketReaders;
 import de.jpx3.intave.user.User;
@@ -52,7 +53,11 @@ public abstract class TickAlignedHistoryBlueprint<E extends TickAlignedMeta> ext
     } else if (type == PacketType.Play.Client.ARM_ANIMATION) {
       meta.clicks++;
     } else if (type == PacketType.Play.Client.BLOCK_DIG) {
-      EnumWrappers.PlayerDigType digType = packet.getPlayerDigTypes().read(0);
+      EnumWrappers.PlayerDigType digType;
+      try (BlockDigReader reader = PacketReaders.readerOf(packet)) {
+        digType = reader.action();
+      }
+      if (digType == null) return;
 //      if (digType == )
       if (digType == DROP_ITEM && user.meta().inventory().heldItemType() == Material.AIR) {
 

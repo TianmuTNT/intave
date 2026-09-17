@@ -22,15 +22,15 @@ final class PointedDripstoneBlockPatch extends BlockShapePatch {
 
   @Override
   public BlockShape collisionPatch(World world, Player player, int x, int y, int z, Material type, int variantIndex, BlockShape shape) {
-    return shapePatch(world, player, x, y, z, type, variantIndex, shape);
+    return shapePatch(x, z, type, variantIndex);
   }
 
   @Override
   public BlockShape outlinePatch(World world, Player player, int x, int y, int z, Material type, int variantIndex, BlockShape shape) {
-    return shapePatch(world, player, x, y, z, type, variantIndex, shape);
+    return shapePatch(x, z, type, variantIndex);
   }
 
-  private BlockShape shapePatch(World world, Player player, int x, int y, int z, Material type, int variantIndex, BlockShape shape) {
+  private BlockShape shapePatch(int x, int z, Material type, int variantIndex) {
     BlockVariant variant = BlockVariantRegister.variantOf(type, variantIndex);
     DripstoneThickness thickness = variant.enumProperty(DripstoneThickness.class, "thickness");
     Direction verticalDirection = variant.enumProperty(Direction.class, "vertical_direction");
@@ -75,7 +75,8 @@ final class PointedDripstoneBlockPatch extends BlockShapePatch {
 
   @Override
   public boolean appliesTo(Material material) {
-    return material.name().endsWith("_DRIPSTONE");
+    String name = material.name();
+    return name.endsWith("_DRIPSTONE") || name.equals("SULFUR_SPIKE");
   }
 
   public enum DripstoneThickness {

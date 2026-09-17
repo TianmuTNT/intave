@@ -28,10 +28,10 @@ public final class InternalDebugStage extends CommandStage {
 
     if (category != null) {
       outputConfiguration.activateCategory(category);
-      user.player().sendMessage(ChatColor.GREEN + "Debug mode for " + category.description().toLowerCase(Locale.ROOT) + " activated");
+      user.sendMessage(ChatColor.GREEN + "Debug mode for " + category.description().toLowerCase(Locale.ROOT) + " activated");
     } else {
       outputConfiguration.activateAllCategories();
-      user.player().sendMessage(ChatColor.GREEN + "All debug modes enabled.");
+      user.sendMessage(ChatColor.GREEN + "All debug modes enabled.");
     }
   }
 
@@ -45,10 +45,10 @@ public final class InternalDebugStage extends CommandStage {
 
     if (category != null) {
       outputConfiguration.deactivateCategory(category);
-      user.player().sendMessage(ChatColor.GREEN + "Debug mode for " + category.description().toLowerCase(Locale.ROOT) + " deactivated");
+      user.sendMessage(ChatColor.GREEN + "Debug mode for " + category.description().toLowerCase(Locale.ROOT) + " deactivated");
     } else {
       outputConfiguration.deactivateAllCategories();
-      user.player().sendMessage(ChatColor.GREEN + "All debug modes disabled.");
+      user.sendMessage(ChatColor.GREEN + "All debug modes disabled.");
     }
   }
 
@@ -60,7 +60,7 @@ public final class InternalDebugStage extends CommandStage {
   public void setColor(User user, MessageCategory category, ChatColor color) {
     OutputConfiguration outputConfiguration = DebugBroadcast.configurationOf(user.id());
     outputConfiguration.setColor(category, color);
-    user.player().sendMessage(ChatColor.GREEN + "Color for " + category.description().toLowerCase(Locale.ROOT) + " set to " + color.name());
+    user.sendMessage(ChatColor.GREEN + "Color for " + category.description().toLowerCase(Locale.ROOT) + " set to " + color.name());
   }
 
   @SubCommand(
@@ -71,7 +71,7 @@ public final class InternalDebugStage extends CommandStage {
   public void setMinimumSeverity(User user, MessageSeverity severity) {
     OutputConfiguration outputConfiguration = DebugBroadcast.configurationOf(user.id());
     outputConfiguration.setMinimumSeverity(severity);
-    user.player().sendMessage(ChatColor.GREEN + "Minimum severity set to " + severity.name());
+    user.sendMessage(ChatColor.GREEN + "Minimum severity set to " + severity.name());
   }
 
   @SubCommand(
@@ -83,10 +83,10 @@ public final class InternalDebugStage extends CommandStage {
     OutputConfiguration outputConfiguration = DebugBroadcast.configurationOf(user.id());
     if (category != null) {
       outputConfiguration.setMessageDetail(category, detail);
-      user.player().sendMessage(ChatColor.GREEN + "Detail for " + category.description().toLowerCase(Locale.ROOT) + " set to " + detail.name());
+      user.sendMessage(ChatColor.GREEN + "Detail for " + category.description().toLowerCase(Locale.ROOT) + " set to " + detail.name());
     } else {
       outputConfiguration.setDefaultMessageDetail(detail);
-      user.player().sendMessage(ChatColor.GREEN + "Detail set to " + detail.name());
+      user.sendMessage(ChatColor.GREEN + "Detail set to " + detail.name());
     }
   }
 
@@ -98,7 +98,7 @@ public final class InternalDebugStage extends CommandStage {
   public void setFormatter(User user, PrefixDetail detail) {
     OutputConfiguration outputConfiguration = DebugBroadcast.configurationOf(user.id());
     outputConfiguration.setDefaultPrefixDetail(detail);
-    user.player().sendMessage(ChatColor.GREEN + "Prefix set to " + detail.name());
+    user.sendMessage(ChatColor.GREEN + "Prefix set to " + detail.name());
   }
 
   @SubCommand(
@@ -119,7 +119,7 @@ public final class InternalDebugStage extends CommandStage {
       }
       return false;
     });
-    user.player().sendMessage(ChatColor.GREEN + "Target set for " + cat.description().toLowerCase(Locale.ROOT));
+    user.sendMessage(ChatColor.GREEN + "Target set for " + cat.description().toLowerCase(Locale.ROOT));
   }
 
   @SubCommand(
@@ -130,7 +130,7 @@ public final class InternalDebugStage extends CommandStage {
   public void setSelfTarget(User user, MessageCategory cat) {
     OutputConfiguration outputConfiguration = DebugBroadcast.configurationOf(user.id());
     outputConfiguration.addConstraint(cat, player -> player.equals(user.player()));
-    user.player().sendMessage(ChatColor.GREEN + "Self target set for " + cat.description().toLowerCase(Locale.ROOT));
+    user.sendMessage(ChatColor.GREEN + "Self target set for " + cat.description().toLowerCase(Locale.ROOT));
   }
 
   @SubCommand(
@@ -141,7 +141,7 @@ public final class InternalDebugStage extends CommandStage {
   public void removeTarget(User user, MessageCategory cat) {
     OutputConfiguration outputConfiguration = DebugBroadcast.configurationOf(user.id());
     outputConfiguration.removeConstraint(cat);
-    user.player().sendMessage(ChatColor.GREEN + "Target removed for " + cat.description().toLowerCase(Locale.ROOT));
+    user.sendMessage(ChatColor.GREEN + "Target removed for " + cat.description().toLowerCase(Locale.ROOT));
   }
 
   @SubCommand(
@@ -151,17 +151,16 @@ public final class InternalDebugStage extends CommandStage {
   )
   public void status(User user) {
     OutputConfiguration outputConfiguration = DebugBroadcast.configurationOf(user.id());
-    Player player = user.player();
-    player.sendMessage(IntavePlugin.prefix() + "Debug mode status");
+    user.sendMessage(IntavePlugin.prefix() + "Debug mode status");
     String prefixSelectorName = outputConfiguration.prefixSelector().name().toLowerCase(Locale.ROOT).replace("_", " ");
-    player.sendMessage(IntavePlugin.prefix() + ChatColor.GRAY + "Prefix is " + prefixSelectorName + ". Example: " + outputConfiguration.prefixSelector().formatPrefix(MessageSeverity.MEDIUM, "NAME") + "");
+    user.sendMessage(IntavePlugin.prefix() + ChatColor.GRAY + "Prefix is " + prefixSelectorName + ". Example: " + outputConfiguration.prefixSelector().formatPrefix(MessageSeverity.MEDIUM, "NAME") + "");
 
     for (MessageCategory category : MessageCategory.values()) {
       ChatColor color = outputConfiguration.colorOf(category);
       String active = outputConfiguration.isActive(category) ? ChatColor.GREEN + "enabled" + ChatColor.GRAY : ChatColor.RED + "disabled" + ChatColor.GRAY;
       String format = outputConfiguration.detailOf(category).name().toLowerCase(Locale.ROOT);
       String description = category.description().toLowerCase(Locale.ROOT);
-      player.sendMessage(color + " " + category.name() + ChatColor.GRAY + " (" + color + description + ChatColor.GRAY + ")" + " " + active + " in " + format + " format");
+      user.sendMessage(color + " " + category.name() + ChatColor.GRAY + " (" + color + description + ChatColor.GRAY + ")" + " " + active + " in " + format + " format");
     }
   }
 

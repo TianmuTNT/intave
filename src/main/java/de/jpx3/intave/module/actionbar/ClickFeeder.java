@@ -10,6 +10,7 @@ import de.jpx3.intave.check.movement.physics.environment.SimulationEnvironment;
 import de.jpx3.intave.module.linker.packet.ListenerPriority;
 import de.jpx3.intave.module.linker.packet.PacketSubscription;
 import de.jpx3.intave.packet.PacketTypes;
+import de.jpx3.intave.packet.reader.BlockDigReader;
 import de.jpx3.intave.packet.reader.EntityUseReader;
 import de.jpx3.intave.packet.reader.PacketReaders;
 import de.jpx3.intave.user.User;
@@ -55,7 +56,11 @@ public final class ClickFeeder implements EventProcessor {
         bufferData.desynchronizedClick = true;
       }
     } else if (type == PacketType.Play.Client.BLOCK_DIG) {
-      if (packet.getPlayerDigTypes().read(0) == DROP_ITEM && user.meta().inventory().heldItemType() == Material.AIR) {
+      EnumWrappers.PlayerDigType digType;
+      try (BlockDigReader reader = PacketReaders.readerOf(packet)) {
+        digType = reader.action();
+      }
+      if (digType == DROP_ITEM && user.meta().inventory().heldItemType() == Material.AIR) {
         UUID actionTarget = user.actionTarget();
         if (actionTarget != null) {
           User actionTargetUser = UserRepository.userOf(actionTarget);

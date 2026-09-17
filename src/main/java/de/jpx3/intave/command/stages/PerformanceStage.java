@@ -47,7 +47,7 @@ public final class PerformanceStage extends CommandStage {
   public void timingsCommand(User user, @Optional String[] specifier) {
     String fullSpecifier = specifier != null ? Arrays.stream(specifier).map(s -> s + " ").collect(Collectors.joining()).trim().toLowerCase(Locale.ROOT) : "";
     Player player = user.player();
-    player.sendMessage(ChatColor.RED + "Loading timings...");
+    user.sendMessage(ChatColor.RED + "Loading timings...");
     List<Timing> timings = new ArrayList<>(Timings.timingPool());
     timings.sort(Timing::compareTo);
 
@@ -86,7 +86,7 @@ public final class PerformanceStage extends CommandStage {
   public void eventTimingsCommand(User user, @Optional String[] specifier) {
     String fullSpecifier = specifier != null ? Arrays.stream(specifier).map(s -> s + " ").collect(Collectors.joining()).trim().toLowerCase(Locale.ROOT) : "";
     Player player = user.player();
-    player.sendMessage(ChatColor.RED + "Loading timings...");
+    user.sendMessage(ChatColor.RED + "Loading timings...");
 
     List<Timing> timings = new ArrayList<>(Timings.timingPool());
     timings.sort(Timing::compareTo);
@@ -123,7 +123,7 @@ public final class PerformanceStage extends CommandStage {
     String fullSpecifier = specifier != null ? Arrays.stream(specifier).map(s -> s + " ").collect(Collectors.joining()).trim().toLowerCase(Locale.ROOT) : "";
 
     Player player = user.player();
-    player.sendMessage(ChatColor.RED + "Loading timings...");
+    user.sendMessage(ChatColor.RED + "Loading timings...");
 
     List<Timing> timings = new ArrayList<>(Timings.timingPool());
     timings.sort(Timing::compareTo);
@@ -157,7 +157,7 @@ public final class PerformanceStage extends CommandStage {
     hideInHelp = true
   )
   public void histogramCommand(User user, String[] timingName) {
-    TimingChatOutput.sendHistogram(user.player(), timingName);
+    TimingChatOutput.sendHistogram(user, timingName);
   }
 
   public static String largeNumberFormat(double value) {

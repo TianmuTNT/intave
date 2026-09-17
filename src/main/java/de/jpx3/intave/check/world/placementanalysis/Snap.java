@@ -65,7 +65,7 @@ public final class Snap extends PlayerCheckPart<PlacementAnalysis> {
 		double currentYawMotion = Math.abs(movementData.lastRotationYaw - movementData.rotationYaw);
 		double currentPitchMotion = Math.abs(movementData.lastRotationPitch - movementData.rotationPitch);
 		if (IntaveControl.SCAFFOLD_ACTION_DEBUG) {
-			player.sendMessage(formatDouble(currentYawMotion, 4) + ", " + formatDouble(currentPitchMotion, 4));
+			user.sendMessage(formatDouble(currentYawMotion, 4) + ", " + formatDouble(currentPitchMotion, 4));
 		}
 		boolean alphaCondition = pitchAt(1) > 70;
 		int pitchLimit = alphaCondition ? 20 : 40;
@@ -148,7 +148,8 @@ public final class Snap extends PlayerCheckPart<PlacementAnalysis> {
 		float yaw = location.getYaw();
 		float pitch = location.getPitch();
 		if (IntaveControl.SCAFFOLD_ACTION_DEBUG) {
-			player.sendMessage(ChatColor.DARK_PURPLE + " PLACE: " + yaw + " " + pitch);
+			User user = userOf(player);
+			user.sendMessage(ChatColor.DARK_PURPLE + " PLACE: " + yaw + " " + pitch);
 		}
 
 		if (System.currentTimeMillis() - detectionTime < 2_500) {

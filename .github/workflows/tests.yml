@@ -5,33 +5,34 @@ on:
   pull_request:
 
 jobs:
+  versions:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+      - uses: actions/setup-java@v4
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+      - uses: gradle/actions/setup-gradle@v3
+      - name: Export configured Paper versions
+        id: matrix
+        run: |
+          ./gradlew exportPaperTestMatrix
+          echo "matrix=$(cat build/paper-test-matrix.json)" >> "$GITHUB_OUTPUT"
+
   test:
+    needs: versions
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
       fail-fast: false
-      matrix:
-        version:
-          - "1.8.8"
-          - "1.9.4"
-          - "1.12.2"
-          - "1.14.4"
-          - "1.15.2"
-          - "1.16.5"
-          - "1.17.1"
-          - "1.18.2"
-          - "1.19.4"
-          - "1.20"
-          - "1.20.1"
-          - "1.20.2"
-          - "1.20.4"
-          - "1.21.1"
-          - "1.21.3"
-          - "1.21.4"
-          - "1.21.7"
-          - "1.21.11"
-          - "26.1.2"
-          - "26.2"
+      matrix: ${{ fromJSON(needs.versions.outputs.matrix) }}
 
     steps:
       - uses: actions/checkout@v6

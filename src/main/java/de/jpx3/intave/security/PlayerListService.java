@@ -214,7 +214,7 @@ public final class PlayerListService implements BukkitEventSubscriber {
     User user = UserRepository.userOf(player);
     Synchronizer.synchronize(user, () -> {
       if (messageInChat) {
-        player.sendMessage(kickMessage);
+        user.sendMessage(kickMessage);
         Synchronizer.synchronizeDelayed(user, () ->
           player.kickPlayer(""), 5
         );

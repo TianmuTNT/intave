@@ -1,8 +1,8 @@
 package de.jpx3.intave.check.combat.heuristics.other;
 
-import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.wrappers.EnumWrappers;
+import de.jpx3.intave.packet.reader.BlockDigReader;
 import de.jpx3.intave.check.MetaCheckPart;
 import de.jpx3.intave.check.combat.Heuristics;
 import de.jpx3.intave.module.linker.packet.PacketSubscription;
@@ -30,12 +30,12 @@ public final class CivbreakHeuristic extends MetaCheckPart<Heuristics, CivbreakH
       BLOCK_DIG
     }
   )
-  public void receiveInteractionPacket(PacketEvent event) {
+  public void receiveInteractionPacket(PacketEvent event, BlockDigReader reader) {
     Player player = event.getPlayer();
     User user = userOf(player);
     CivbreakMeta meta = metaOf(user);
-    PacketContainer packet = event.getPacket();
-    EnumWrappers.PlayerDigType playerDigType = packet.getPlayerDigTypes().readSafely(0);
+    EnumWrappers.PlayerDigType playerDigType = reader.action();
+    if (playerDigType == null) return;
     // Note: isMining should set to false on every PlayerDigType except START_DESTROY_BLOCK
 //    player.sendMessage("" + playerDigType);
     if (playerDigType == EnumWrappers.PlayerDigType.START_DESTROY_BLOCK) {

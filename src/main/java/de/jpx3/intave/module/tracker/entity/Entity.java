@@ -12,7 +12,6 @@
 package de.jpx3.intave.module.tracker.entity;
 
 import com.comphenix.protocol.events.PacketContainer;
-import com.comphenix.protocol.reflect.StructureModifier;
 import de.jpx3.intave.access.IntaveInternalException;
 import de.jpx3.intave.adapter.MinecraftVersions;
 import de.jpx3.intave.entity.size.HitboxSize;
@@ -21,6 +20,8 @@ import de.jpx3.intave.math.Hypot;
 import de.jpx3.intave.module.feedback.FeedbackObserver;
 import de.jpx3.intave.module.feedback.PendingCountingFeedbackObserver;
 import de.jpx3.intave.packet.Relative;
+import de.jpx3.intave.packet.reader.EntityMovementReader;
+import de.jpx3.intave.version.ServerProtocolVersion;
 import de.jpx3.intave.share.*;
 import de.jpx3.intave.user.User;
 import de.jpx3.intave.user.meta.ProtocolMetadata;
@@ -40,7 +41,6 @@ public class Entity {
   */
   private static Entity DESTROYED_ENTITY;
   private static final boolean POSITION_PROCESSING_1_9 = MinecraftVersions.VER1_9_0.atOrAbove();
-  private static final boolean POSITION_PROCESSING_1_14 = MinecraftVersions.VER1_14_0.atOrAbove();
   private static final boolean POSITION_PROCESSING_1_21_3 = MinecraftVersions.VER1_21_3.atOrAbove();
   private EntityTypeData typeData;
 
@@ -323,7 +323,7 @@ public class Entity {
   }
 
   public void handleEntityPositionSync(User user, PacketContainer packet) {
-    PositionMoveRotation posMoveRot = PositionMoveRotation.firstFrom(packet);
+    PositionMoveRotation posMoveRot = EntityMovementReader.readPositionSync(packet, ServerProtocolVersion.current());
     Position position = posMoveRot.position();
     handleEntityPositionSync(position);
     if (entityName().toLowerCase().contains("chicken")) {
@@ -360,7 +360,7 @@ public class Entity {
     double newPosX;
     double newPosY;
     double newPosZ;
-    PositionMoveRotation posMoveRot = PositionMoveRotation.firstFrom(packet);
+    PositionMoveRotation posMoveRot = EntityMovementReader.readPositionSync(packet, ServerProtocolVersion.current());
     Position position = posMoveRot.position();
     newPosX = position.getX();
     newPosY = position.getY();
@@ -379,16 +379,8 @@ public class Entity {
   }
 
   public void immediateEntityMovement(PacketContainer packet) {
-    if (POSITION_PROCESSING_1_14) {
-      StructureModifier<Short> shorts = packet.getShorts();
-      applyImmediateRelativeMove(shorts.readSafely(0), shorts.readSafely(1), shorts.readSafely(2), 4096d);
-    } else if (POSITION_PROCESSING_1_9) {
-      StructureModifier<Integer> integers = packet.getIntegers();
-      applyImmediateRelativeMove(integers.readSafely(1), integers.readSafely(2), integers.readSafely(3), 4096d);
-    } else {
-      StructureModifier<Byte> bytes = packet.getBytes();
-      applyImmediateRelativeMove(bytes.readSafely(0), bytes.readSafely(1), bytes.readSafely(2), 32d);
-    }
+    EntityMovementReader.Delta delta = EntityMovementReader.read(packet, ServerProtocolVersion.current());
+    applyImmediateRelativeMove(delta.x(), delta.y(), delta.z(), delta.divisor());
   }
 
   public void applyImmediateRelativeMove(long dx, long dy, long dz, double divisor) {
@@ -409,28 +401,8 @@ public class Entity {
    * @param packet contains information about the entity movement
    */
   public void handleEntityMovement(User user, PacketContainer packet, boolean sync) {
-    long dx, dy, dz;
-    double divisor;
-    if (POSITION_PROCESSING_1_14) {
-      StructureModifier<Short> shorts = packet.getShorts();
-      dx = shorts.readSafely(0);
-      dy = shorts.readSafely(1);
-      dz = shorts.readSafely(2);
-      divisor = 4096d;
-    } else if (POSITION_PROCESSING_1_9) {
-      StructureModifier<Integer> integers = packet.getIntegers();
-      dx = integers.readSafely(1);
-      dy = integers.readSafely(2);
-      dz = integers.readSafely(3);
-      divisor = 4096d;
-    } else {
-      StructureModifier<Byte> bytes = packet.getBytes();
-      dx = bytes.readSafely(0);
-      dy = bytes.readSafely(1);
-      dz = bytes.readSafely(2);
-      divisor = 32d;
-    }
-    applyRelativeMove(dx, dy, dz, divisor);
+    EntityMovementReader.Delta delta = EntityMovementReader.read(packet, ServerProtocolVersion.current());
+    applyRelativeMove(delta.x(), delta.y(), delta.z(), delta.divisor());
   }
 
   /**

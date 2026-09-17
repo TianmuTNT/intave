@@ -9,8 +9,37 @@ import java.util.function.Consumer;
 final class ProtocolVersionRanges implements Iterable<ProtocolVersionRange> {
   private final Collection<ProtocolVersionRange> versionRanges;
 
-  public ProtocolVersionRanges(List<ProtocolVersionRange> versionRanges) {
+  private final Map<MinecraftVersion, Integer> declaredReleases;
+  private final Map<MinecraftVersion, Integer> releaseProtocols;
+
+  public ProtocolVersionRanges(List<ProtocolVersionRange> versionRanges, Map<MinecraftVersion, Integer> declaredReleases) {
     this.versionRanges = versionRanges;
+    this.declaredReleases = new HashMap<>(declaredReleases);
+    this.releaseProtocols = new HashMap<>();
+    for (ProtocolVersionRange range : versionRanges) {
+      if (range.to() > 0) {
+        releaseProtocols.put(range.asMinecraftVersion(), range.to());
+      }
+    }
+    releaseProtocols.putAll(declaredReleases);
+  }
+
+  public int exactProtocolVersion(MinecraftVersion version) {
+    if (version.isSnapshot() || version.getDevelopmentStage() != null) {
+      return -1;
+    }
+    return releaseProtocols.getOrDefault(version, -1);
+  }
+
+  public ProtocolVersionRanges merge(ProtocolVersionRanges fallback) {
+    Map<MinecraftVersion, Integer> declarations = new HashMap<>(fallback.declaredReleases);
+    declarations.putAll(declaredReleases);
+    ProtocolVersionRanges result = new ProtocolVersionRanges(new ArrayList<>(versionRanges), declarations);
+    result.releaseProtocols.putAll(fallback.releaseProtocols);
+    result.releaseProtocols.putAll(releaseProtocols);
+    // An explicit release declaration is more precise than either source's display label.
+    result.releaseProtocols.putAll(declarations);
+    return result;
   }
 
   public Optional<ProtocolVersionRange> newest() {

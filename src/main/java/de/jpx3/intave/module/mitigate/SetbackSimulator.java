@@ -94,7 +94,7 @@ public final class SetbackSimulator extends Module {
     );
     if (violationLevelData.isInActiveTeleportBundle) {
       if (IntaveControl.DEBUG_EMULATION) {
-        player.sendMessage(ChatColor.DARK_PURPLE + "[E-] Exit by " + teleport.getCause() + " teleport event");
+        user.sendMessage(ChatColor.DARK_PURPLE + "[E-] Exit by " + teleport.getCause() + " teleport event");
       }
       violationLevelData.disableActiveTeleportBundleNextTeleportAccept = true;
     }
@@ -161,7 +161,7 @@ public final class SetbackSimulator extends Module {
         " ticks=" + ticks + " delay=" + delay + " cancellable=" + cancellable
     );
     if (IntaveControl.DEBUG_EMULATION) {
-      player.sendMessage(ChatColor.DARK_PURPLE + "[E+] " + motion  + " (" + ticks + " ticks, "+(!isOriginal ? "not ["+originalMotion+"] " : "")+" original)");
+      user.sendMessage(ChatColor.DARK_PURPLE + "[E+] " + motion  + " (" + ticks + " ticks, "+(!isOriginal ? "not ["+originalMotion+"] " : "")+" original)");
     }
 
     proceedEmulationTick(player.getWorld(), player, motion, ticks, ticks, delay, cancellable);
@@ -358,7 +358,7 @@ public final class SetbackSimulator extends Module {
       }
 
       if (IntaveControl.DEBUG_EMULATION) {
-        player.sendMessage(ChatColor.DARK_PURPLE + "[E-] (" + ticks + " ticks remaining)");
+        user.sendMessage(ChatColor.DARK_PURPLE + "[E-] (" + ticks + " ticks remaining)");
       }
     } else {
       // teleport
@@ -390,7 +390,7 @@ public final class SetbackSimulator extends Module {
 
       if (IntaveControl.DEBUG_EMULATION) {
         String s = ChatColor.DARK_PURPLE + "[E/] " + MathHelper.formatMotion(motion) + (boundingBoxIntersection ? " (block-push)" : "") + " at " + MathHelper.formatPosition(futurePosition) + " (" + ticks + " ticks remaining)";
-        player.sendMessage(s);
+        user.sendMessage(s);
       }
       //   s += " @" + movementData.entityBoundingBox();
 
@@ -621,7 +621,7 @@ public final class SetbackSimulator extends Module {
         );
 
         if (user.receives(MessageChannel.DEBUG_TELEPORT)) {
-          player.sendMessage(IntavePlugin.prefix() + "Teleport to " + player.getLocation().getBlockX() + " " + player.getLocation().getBlockY() + " " + player.getLocation().getBlockZ() + " " + " per " + ChatColor.RED + " setback policy");
+          user.sendMessage(IntavePlugin.prefix() + "Teleport to " + player.getLocation().getBlockX() + " " + player.getLocation().getBlockY() + " " + player.getLocation().getBlockZ() + " " + " per " + ChatColor.RED + " setback policy");
         }
       } catch (IllegalAccessException exception) {
         throw new IntaveInternalException(exception);

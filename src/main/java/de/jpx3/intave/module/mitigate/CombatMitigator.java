@@ -203,9 +203,10 @@ public final class CombatMitigator extends Module {
       return;
     }
     Player player = (Player) attacker;
-    PunishmentMetadata punishmentData = UserRepository.userOf(player).meta().punishment();
+    User user = UserRepository.userOf(player);
+    PunishmentMetadata punishmentData = user.meta().punishment();
 
-    boolean attackerHasRedTrust = UserRepository.userOf(player).trustFactor().atOrBelow(RED);
+    boolean attackerHasRedTrust = user.trustFactor().atOrBelow(RED);
     boolean attackedHasRedTrust = (attacked instanceof Player) && UserRepository.userOf((Player) attacked).trustFactor().atOrBelow(RED);
 
     for (AttackNerfer attackNerfer : punishmentData.allNerfers()) {
@@ -215,11 +216,11 @@ public final class CombatMitigator extends Module {
     }
 
     if (IntaveControl.DEBUG_ATTACK_DAMAGE_MODIFIERS) {
-      player.sendMessage("");
+      user.sendMessage("");
       for (EntityDamageEvent.DamageModifier value : EntityDamageEvent.DamageModifier.values()) {
         double damage = event.getDamage(value);
         if (damage != 0) {
-          player.sendMessage( value + " = " + damage);
+          user.sendMessage( value + " = " + damage);
         }
       }
     }
@@ -328,7 +329,7 @@ public final class CombatMitigator extends Module {
     }
 
     if (user.receives(MessageChannel.DEBUG_NERFS)) {
-      user.player().sendMessage(ChatColor.RED + "[Intave] " + ChatColor.GRAY + "Applied " + attackNerfer.name() + " combat nerfer " + (attackNerfer.expiry() == Long.MAX_VALUE ? "permanently" : "for " + MathHelper.formatDouble((attackNerfer.expiry() - System.currentTimeMillis()) / 1000d, 2) + "s"));
+      user.sendMessage(ChatColor.RED + "[Intave] " + ChatColor.GRAY + "Applied " + attackNerfer.name() + " combat nerfer " + (attackNerfer.expiry() == Long.MAX_VALUE ? "permanently" : "for " + MathHelper.formatDouble((attackNerfer.expiry() - System.currentTimeMillis()) / 1000d, 2) + "s"));
     }
 
     Player player = user.player();
@@ -342,13 +343,13 @@ public final class CombatMitigator extends Module {
     }
 
     if (IntaveControl.DEBUG_CMS) {
-      user.player().sendMessage(ChatColor.RED + "[Intave] " + ChatColor.GRAY + "Applied " + attackNerfer.name() + " combat nerfer " + durationText);
+      user.sendMessage(ChatColor.RED + "[Intave] " + ChatColor.GRAY + "Applied " + attackNerfer.name() + " combat nerfer " + durationText);
     }
 
     String message = ChatColor.RED + "[CM] Applied " + attackNerfer.name() + " combat nerfer on " + player.getName() + " (dmc" + checkId + ") " + durationText;
 
     if (IntaveControl.DEBUG_HEURISTICS && !plugin.sibyl().isAuthenticated(player)) {
-      player.sendMessage(message);
+      user.sendMessage(message);
     }
 
     if (attackNerfer.strategy().showToUsers() && !attackNerfer.hidden() && !hide) {
@@ -357,7 +358,7 @@ public final class CombatMitigator extends Module {
         User user1 = UserRepository.userOf(player1);
         if (user1.receives(MessageChannel.COMBAT_MODIFIERS)) {
           Synchronizer.synchronizeDelayed(user1, () -> {
-            player1.sendMessage(kMessage);
+            user1.sendMessage(kMessage);
           }, 4);
         }
       }

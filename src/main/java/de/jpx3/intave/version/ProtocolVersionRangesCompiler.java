@@ -1,18 +1,43 @@
 package de.jpx3.intave.version;
 
 import de.jpx3.intave.resource.BulkLineCollector;
+import de.jpx3.intave.adapter.MinecraftVersion;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
 import java.util.stream.Collector;
 
 final class ProtocolVersionRangesCompiler {
   public static ProtocolVersionRanges apply(List<String> lines) {
     int lastEnd = Integer.MIN_VALUE;
     List<ProtocolVersionRange> ranges = new ArrayList<>();
+    Map<MinecraftVersion, Integer> releases = new HashMap<>();
     for (int i = 0; i < lines.size(); i++) {
       String line = lines.get(i).trim();
-      if (line.startsWith("#")) {
+      if (line.isEmpty() || line.startsWith("#")) {
+        continue;
+      }
+      if (line.startsWith("release ")) {
+        String[] parts = line.substring("release ".length()).split(" is ", 2);
+        if (parts.length != 2) throw new IllegalArgumentException("Invalid release mapping: " + line);
+        int protocol = Integer.parseInt(parts[0]);
+        if (protocol <= 0) throw new IllegalArgumentException("Invalid release protocol: " + line);
+        for (String name : parts[1].split(",", -1)) {
+          String release = name.trim();
+          if (!release.matches("[0-9]+\\.[0-9]+(?:\\.[0-9]+)?")) {
+            throw new IllegalArgumentException("Invalid release name: " + name);
+          }
+          MinecraftVersion version = new MinecraftVersion(release);
+          if (version.isSnapshot() || version.getDevelopmentStage() != null) {
+            throw new IllegalArgumentException("Expected a released version: " + line);
+          }
+          Integer previous = releases.put(version, protocol);
+          if (previous != null && previous != protocol) {
+            throw new IllegalArgumentException("Conflicting release mapping: " + name);
+          }
+        }
         continue;
       }
       if (line.startsWith("up to")) {
@@ -46,7 +71,7 @@ final class ProtocolVersionRangesCompiler {
         lastEnd = protocolVersion;
       }
     }
-    return new ProtocolVersionRanges(ranges);
+    return new ProtocolVersionRanges(ranges, releases);
   }
 
   private static final Collector<String, ?, ProtocolVersionRanges> RESOURCE_COLLECTOR = BulkLineCollector.withFinisher(ProtocolVersionRangesCompiler::apply);

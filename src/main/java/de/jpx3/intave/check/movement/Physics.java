@@ -1245,8 +1245,7 @@ public final class Physics extends Check {
       }
       String finalDebug = debug;
       if (!anyDebugRequested) {
-        String finalFinalDebug = finalDebug;
-        Synchronizer.synchronize(user, () -> player.sendMessage(finalFinalDebug));
+        user.sendMessage(finalDebug);
       } else {
         finalDebug = ChatColor.stripColor(finalDebug);
         if (faultDebugRequested && violationLevelIncrease > 0) {
@@ -1347,7 +1346,7 @@ public final class Physics extends Check {
 
       if (debugNoSlowdown) {
         boolean requestsReset = ignoredSlowdown && movementData.handItemSimulationFails > 1;
-        user.player().sendMessage(IntavePlugin.prefix() + "No slowdown: active=true, impossible=true, speed="
+        user.sendMessage(IntavePlugin.prefix() + "No slowdown: active=true, impossible=true, speed="
           + MathHelper.formatDouble(horizontalSpeed, 4) + ", teleportTicks=" + ticksSinceTeleport
           + ", bow=" + itemIsBow + ", activeTicks=" + inventoryData.handActiveTicks
           + ", viaShield=" + viaVersionBlockReplacement + ", release=" + releaseHandConditions
@@ -1359,11 +1358,11 @@ public final class Physics extends Check {
         meta.inventory().releaseItemNextTick();
 
         if (user.receives(MessageChannel.DEBUG_ITEM_RESETS)) {
-          user.player().sendMessage(IntavePlugin.prefix() + "Requesting item usage reset as " + ChatColor.RED + "movement/state discrepancy ");
+          user.sendMessage(IntavePlugin.prefix() + "Requesting item usage reset as " + ChatColor.RED + "movement/state discrepancy ");
         }
       }
     } else if (debugNoSlowdown) {
-      user.player().sendMessage(IntavePlugin.prefix() + "No slowdown: active=" + packetsSuggestsHandIsActive
+      user.sendMessage(IntavePlugin.prefix() + "No slowdown: active=" + packetsSuggestsHandIsActive
         + ", impossible=" + movementProvesHandIsInactive);
     }
   }

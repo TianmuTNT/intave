@@ -30,6 +30,7 @@ import de.jpx3.intave.module.linker.packet.PacketEventSubscriber;
 import de.jpx3.intave.module.linker.packet.PacketSubscription;
 import de.jpx3.intave.module.tracker.player.PacketLogging;
 import de.jpx3.intave.packet.Relative;
+import de.jpx3.intave.packet.reader.BlockDigReader;
 import de.jpx3.intave.packet.reader.PacketReaders;
 import de.jpx3.intave.packet.reader.PlayerTeleportReader;
 import de.jpx3.intave.share.BoundingBox;
@@ -197,7 +198,7 @@ public final class TeleportController implements PacketEventSubscriber {
     }
 
     if (user.receives(MessageChannel.DEBUG_TELEPORT)) {
-      player.sendMessage(IntavePlugin.prefix() + "You were instructed to teleport to " + MathHelper.formatPosition(movementData.teleportLocation) + " " + relativeXPosition + " " + relativeYPosition + " " + relativeZPosition);
+      user.sendMessage(IntavePlugin.prefix() + "You were instructed to teleport to " + MathHelper.formatPosition(movementData.teleportLocation) + " " + relativeXPosition + " " + relativeYPosition + " " + relativeZPosition);
     }
 
     /*
@@ -343,12 +344,11 @@ public final class TeleportController implements PacketEventSubscriber {
           BLOCK_DIG
       }
   )
-  public void clientClickUpdate(PacketEvent event) {
+  public void clientClickUpdate(PacketEvent event, BlockDigReader reader) {
 
     Player player = event.getPlayer();
     User user = UserRepository.userOf(player);
-    PacketContainer packet = event.getPacket();
-    if (packet.getPlayerDigTypes().read(0) == DROP_ITEM && user.meta().inventory().heldItemType() == Material.AIR) {
+    if (reader.action() == DROP_ITEM && user.meta().inventory().heldItemType() == Material.AIR) {
       if (IntaveControl.TELEPORT_FAR_AWAY_ON_Q_PRESS) {
         Synchronizer.synchronize(user, () -> {
           Location from = player.getLocation().clone();
@@ -369,7 +369,7 @@ public final class TeleportController implements PacketEventSubscriber {
           );
 
           if (user.receives(MessageChannel.DEBUG_TELEPORT)) {
-            player.sendMessage(IntavePlugin.prefix() + "Teleport to random " + player.getLocation().getBlockX() + " " + player.getLocation().getBlockY() + " " + player.getLocation().getBlockZ() + " " + " as " + ChatColor.RED + " it was command-requested");
+            user.sendMessage(IntavePlugin.prefix() + "Teleport to random " + player.getLocation().getBlockX() + " " + player.getLocation().getBlockY() + " " + player.getLocation().getBlockZ() + " " + " as " + ChatColor.RED + " it was command-requested");
           }
         });
       }
@@ -384,7 +384,7 @@ public final class TeleportController implements PacketEventSubscriber {
           player.setVelocity(randomVelocity);
           player.setFallDistance(0.0f);
           if (user.receives(MessageChannel.DEBUG_TELEPORT)) {
-            player.sendMessage(IntavePlugin.prefix() + "Set random velocity " + randomVelocity.getX() + " " + randomVelocity.getY() + " " + randomVelocity.getZ() + " as " + ChatColor.RED + " it was command-requested");
+            user.sendMessage(IntavePlugin.prefix() + "Set random velocity " + randomVelocity.getX() + " " + randomVelocity.getY() + " " + randomVelocity.getZ() + " as " + ChatColor.RED + " it was command-requested");
           }
 
 //          Synchronizer.synchronizeDelayed(() -> {
@@ -400,7 +400,7 @@ public final class TeleportController implements PacketEventSubscriber {
           Vector transmittedVelocity = sendVelocityPacket(player, extremeVelocity);
           player.setFallDistance(0.0f);
           if (user.receives(MessageChannel.DEBUG_TELEPORT)) {
-            player.sendMessage(IntavePlugin.prefix() + "Sent extreme velocity " + transmittedVelocity.getX() + " " + transmittedVelocity.getY() + " " + transmittedVelocity.getZ() + " as " + ChatColor.RED + " it was command-requested");
+            user.sendMessage(IntavePlugin.prefix() + "Sent extreme velocity " + transmittedVelocity.getX() + " " + transmittedVelocity.getY() + " " + transmittedVelocity.getZ() + " as " + ChatColor.RED + " it was command-requested");
           }
         });
       }
@@ -565,7 +565,7 @@ public final class TeleportController implements PacketEventSubscriber {
         );
 
         if (user.receives(MessageChannel.DEBUG_TELEPORT)) {
-          player.sendMessage(IntavePlugin.prefix() + "Teleport to " + player.getLocation().getBlockX() + " " + player.getLocation().getBlockY() + " " + player.getLocation().getBlockZ() + " " + " to " + ChatColor.RED + " since you are not responding to outgoing teleport requests");
+          user.sendMessage(IntavePlugin.prefix() + "Teleport to " + player.getLocation().getBlockX() + " " + player.getLocation().getBlockY() + " " + player.getLocation().getBlockZ() + " " + " to " + ChatColor.RED + " since you are not responding to outgoing teleport requests");
         }
       });
     }
@@ -611,7 +611,7 @@ public final class TeleportController implements PacketEventSubscriber {
       );
 
       if (user.receives(MessageChannel.DEBUG_TELEPORT)) {
-        player.sendMessage(
+        user.sendMessage(
           IntavePlugin.prefix() + "Teleport to " +
             player.getLocation().getBlockX() + " " +
             player.getLocation().getBlockY() + " " +
@@ -660,7 +660,7 @@ public final class TeleportController implements PacketEventSubscriber {
         System.out.println("[Intave] " + player.getName() + " accepted teleport");
       }
       if (user.receives(MessageChannel.DEBUG_TELEPORT)) {
-        player.sendMessage(IntavePlugin.prefix() + "Movement matched teleport request to " + MathHelper.formatPosition(teleportLocation));
+        user.sendMessage(IntavePlugin.prefix() + "Movement matched teleport request to " + MathHelper.formatPosition(teleportLocation));
       }
     } else {
       confirmationMode = "position";
@@ -692,7 +692,7 @@ public final class TeleportController implements PacketEventSubscriber {
       }
       isTeleport = validPosition;
       if (user.receives(MessageChannel.DEBUG_TELEPORT)) {
-        player.sendMessage(
+        user.sendMessage(
             IntavePlugin.prefix() + "Movement " + (isTeleport ? "matched" : "did not match")
                 + " teleport request to " + MathHelper.formatPosition(teleportLocation) +
                 " (dev: " + positionDeviation + ", rrot: " + movementData.expectTeleportWithRotation +

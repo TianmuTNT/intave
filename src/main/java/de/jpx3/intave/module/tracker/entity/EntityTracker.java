@@ -39,7 +39,10 @@ import de.jpx3.intave.module.nayoro.Nayoro;
 import de.jpx3.intave.module.nayoro.SampleTypes;
 import de.jpx3.intave.packet.PacketSender;
 import de.jpx3.intave.packet.PacketTypes;
+import de.jpx3.intave.packet.reader.AttachEntityReader;
+import de.jpx3.intave.packet.reader.MountEntityReader;
 import de.jpx3.intave.packet.reader.EntityIterable;
+import de.jpx3.intave.packet.reader.EntityMovementReader;
 import de.jpx3.intave.packet.reader.EntityMetadataReader;
 import de.jpx3.intave.packet.reader.PacketReaders;
 import de.jpx3.intave.player.fake.FakePlayer;
@@ -49,6 +52,7 @@ import de.jpx3.intave.share.Motion;
 import de.jpx3.intave.share.Position;
 import de.jpx3.intave.user.MessageChannel;
 import de.jpx3.intave.user.User;
+import de.jpx3.intave.version.ServerProtocolVersion;
 import de.jpx3.intave.user.UserRepository;
 import de.jpx3.intave.user.meta.*;
 import de.jpx3.intave.world.Particles;
@@ -81,11 +85,11 @@ public final class EntityTracker extends Module {
    TODO: maybe remove entities when their live gets below 0 for 20 ticks. Or debug if entities gets really removed in some kind of root command
    */
   private final EntityTypeResolver entityTypeResolver;
+  private final EntityMountTracker mountTracker = new EntityMountTracker();
   private final PeriodicEntityCoverageSelector coverageSelector;
 //  private final PeriodicTickedEntitySelector tickedEntitySelector;
 
   private final boolean NEW_POSITION_PROCESSING_1_9 = MinecraftVersions.VER1_9_0.atOrAbove();
-  private final boolean NEW_POSITION_PROCESSING_1_14 = MinecraftVersions.VER1_14_0.atOrAbove();
 
   public EntityTracker(IntavePlugin plugin) {
     this.plugin = plugin;
@@ -110,135 +114,15 @@ public final class EntityTracker extends Module {
     coverageSelector.disableTask();
   }
 
-  @PacketSubscription(
-    packetsOut = {
-      MOUNT, ATTACH_ENTITY
-    },
-    ignoreCancelled = false
-  )
-  public void sendAttachEntityPacket(PacketEvent event) {
-    PacketContainer packet = event.getPacket();
-    Player player = event.getPlayer();
-    User user = UserRepository.userOf(player);
-    if (event.getPacketType() == PacketType.Play.Server.MOUNT) {
-      //1.9+ servers
-      int vehicleId = packet.getIntegers().read(0);
-      Entity vehicle = UserRepository.userOf(player).meta().connection().entityBy(vehicleId);
-      if (vehicle == null) {
-//        IntaveLogger.logger().error("Vehicle entity not found in mount request: " + vehicleId);
-        detachEntity(user, vehicleId, -1);
-        return;
-      }
-      int[] newPassengers = event.getPacket().getIntegerArrays().read(0);
-      List<Entity> oldPassengers = vehicle.passengers();
-      List<Integer> toAdd = new ArrayList<>();
-      List<Integer> toRemove = new ArrayList<>();
-      for (int passengerId : newPassengers) {
-        boolean b = true;
-        for (Entity entity : oldPassengers) {
-          if (entity.entityId() == passengerId) {
-            b = false;
-            break;
-          }
-        }
-        if (b) {
-          toAdd.add(passengerId);
-        }
-      }
-      for (Entity passenger : oldPassengers) {
-        boolean b = true;
-        for (int id : newPassengers) {
-          if (id == passenger.entityId()) {
-            b = false;
-            break;
-          }
-        }
-        if (b) {
-          toRemove.add(passenger.entityId());
-        }
-      }
-      for (Integer passengerRemoval : toRemove) {
-        detachEntity(user, vehicleId, passengerRemoval);
-      }
-      for (Integer passengerAddition : toAdd) {
-        attachEntity(user, vehicleId, passengerAddition);
-      }
-    } else if (event.getPacketType() == PacketType.Play.Server.ATTACH_ENTITY) {
-      // 1.8 servers
-      int isLeash = packet.getIntegers().read(0);
-      if (isLeash == 0) {
-        int passengerId = packet.getIntegers().read(1);
-        int vehicleId = packet.getIntegers().read(2);
-        if (vehicleId == -1) {
-          detachEntity(user, -1, passengerId);
-        } else {
-          attachEntity(user, vehicleId, passengerId);
-        }
-      }
-    }
+  @PacketSubscription(packetsOut = MOUNT, ignoreCancelled = false)
+  public void sendMountEntityPacket(User user, MountEntityReader reader) {
+    mountTracker.passengers(user, reader.entityId(), reader.mounts());
   }
 
-  private void attachEntity(User observer, int vehicleId, int passengerId) {
-    ConnectionMetadata connection = observer.meta().connection();
-    tryCreateVehicleEntity(observer, vehicleId);
-    Entity vehicle = connection.entityBy(vehicleId);
-    Entity passenger = connection.entityBy(passengerId);
-    boolean passengerIsObserver = passenger == null && passengerId == observer.player().getEntityId();
-    if (vehicle == null || vehicle == Entity.destroyedEntity()) {
-      return;
-    }
-    if (IntaveControl.DEBUG_MOUNTING) {
-      Bukkit.broadcastMessage("ATTACH " + passengerId + " to " + vehicleId);
-    }
-    observer.tickFeedback(() -> {
-      if (passenger != null) {
-        vehicle.addPassenger(passenger);
-        passenger.mountToEntity(vehicle);
-      }
-      connection.noteMount(passengerId, vehicleId);
-      if (passengerIsObserver) {
-        MovementMetadata movement = observer.meta().movement();
-        if (movement.isInVehicle()) {
-          movement.dismountRidingEntity("Override");
-        }
-        movement.setVehicle(vehicle);
-      }
-    });
-  }
-
-  private void detachEntity(User observer, int vehicleId, int passengerId) {
-    ConnectionMetadata connection = observer.meta().connection();
-    Entity passenger = connection.entityBy(passengerId);
-    boolean passengerIsObserver = passengerId == observer.player().getEntityId();
-    if (passenger == null && !passengerIsObserver) {
-      return;
-    }
-    if (IntaveControl.DEBUG_MOUNTING) {
-      Bukkit.broadcastMessage("DETACH " + passengerId + " from " + vehicleId);
-    }
-    Entity vehicle = passengerIsObserver ? observer.meta().movement().vehicle() : passenger.vehicle();
-    observer.tickFeedback(() -> {
-      if (passenger == null) {
-        return;
-      }
-      if (!passengerIsObserver) {
-        if (vehicle != null) {
-          vehicle.removePassenger(passenger);
-        }
-        passenger.unmountFromEntity();
-      }
-      connection.noteDismount(passengerId);
-      if (passengerIsObserver) {
-        MovementMetadata movement = observer.meta().movement();
-        movement.dismountRidingEntity("Dismount");
-      }
-    });
-  }
-
-  private void tryCreateVehicleEntity(User user, int entityID) {
-    org.bukkit.entity.Entity entity = serverEntityByIdentifier(user.player(), entityID);
-    if (entity != null && user.meta().connection().entityBy(entityID) == null) {
-      spawnMobByBukkitEntity(user, entity);
+  @PacketSubscription(packetsOut = ATTACH_ENTITY, ignoreCancelled = false)
+  public void sendAttachEntityPacket(User user, AttachEntityReader reader) {
+    if (reader.isMount()) {
+      mountTracker.attachment(user, reader.entityId(), reader.vehicleId());
     }
   }
 
@@ -489,15 +373,9 @@ public final class EntityTracker extends Module {
       }
     }
 
-    if (IntaveControl.DEBUG_ENTITY_TRACKING) {
-      Synchronizer.synchronize(user, () -> {
-        Player target = user.player();
-        if (target == null || entity == null) {
-          return;
-        }
-        EntityTypeData typeData = entity.typeData();
-        target.sendMessage(ChatColor.RED + typeData.name() + "/" + typeData.typeId() + " as " + entity.entityId());
-      });
+    if (IntaveControl.DEBUG_ENTITY_TRACKING && entity != null) {
+      EntityTypeData typeData = entity.typeData();
+      user.sendMessage(ChatColor.RED + typeData.name() + "/" + typeData.typeId() + " as " + entity.entityId());
     }
   }
 
@@ -702,29 +580,9 @@ public final class EntityTracker extends Module {
 
     MovementMetadata movement = user.meta().movement();
     double distanceBefore = entity.distanceToPlayerCache > 8 ? 10 : entity.immediateServerPosition.distance(movement.positionX, movement.positionY, movement.positionZ);
-    long dx;
-    long dy;
-    long dz;
-    double divisor;
-    if (NEW_POSITION_PROCESSING_1_14) {
-      StructureModifier<Short> shorts = packet.getShorts();
-      dx = shorts.readSafely(0);
-      dy = shorts.readSafely(1);
-      dz = shorts.readSafely(2);
-      divisor = 4096d;
-    } else if (NEW_POSITION_PROCESSING_1_9) {
-      StructureModifier<Integer> integers = packet.getIntegers();
-      dx = integers.readSafely(1);
-      dy = integers.readSafely(2);
-      dz = integers.readSafely(3);
-      divisor = 4096d;
-    } else {
-      StructureModifier<Byte> bytes = packet.getBytes();
-      dx = bytes.readSafely(0);
-      dy = bytes.readSafely(1);
-      dz = bytes.readSafely(2);
-      divisor = 32d;
-    }
+    EntityMovementReader.Delta delta = EntityMovementReader.read(packet, ServerProtocolVersion.current());
+    long dx = delta.x(), dy = delta.y(), dz = delta.z();
+    double divisor = delta.divisor();
     entity.applyImmediateRelativeMove(dx, dy, dz, divisor);
     double distanceAfter = distanceBefore > 8 ? 10 : entity.immediateServerPosition.distance(movement.positionX, movement.positionY, movement.positionZ);
 
@@ -872,15 +730,9 @@ public final class EntityTracker extends Module {
     }
 
     if (IntaveControl.DEBUG_ENTITY_TRACKING) {
-      Synchronizer.synchronize(user, () -> {
-        Player target = user.player();
-        if (target == null) {
-          return;
-        }
-        HitboxSize size = entityTypeData.size();
-        String sizeToString = size == null ? "null" : "w:" + size.width() + " h:" + size.height();
-        target.sendMessage(ChatColor.GREEN + entityTypeData.name() + "/" + entityTypeData.typeId() + " as " + entityId + " with " + sizeToString);
-      });
+      HitboxSize size = entityTypeData.size();
+      String sizeToString = size == null ? "null" : "w:" + size.width() + " h:" + size.height();
+      user.sendMessage(ChatColor.GREEN + entityTypeData.name() + "/" + entityTypeData.typeId() + " as " + entityId + " with " + sizeToString);
     }
 
     return null;

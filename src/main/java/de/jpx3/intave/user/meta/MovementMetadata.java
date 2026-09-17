@@ -1722,11 +1722,11 @@ public final class MovementMetadata implements SimulationEnvironment {
     this.vehicleCanBeRidden = rideableVehicleNames.stream().anyMatch(s -> entityName.toLowerCase().contains(s.toLowerCase()));
 
     if (IntaveControl.DEBUG_MOUNTING) {
-      player.sendMessage(ChatColor.RED + "Mounting " + ridingEntity.entityName() + " " + MathHelper.formatDouble(attachMoveDistance, 4) + " blocks away");
+      user.sendMessage(ChatColor.RED + "Mounting " + ridingEntity.entityName() + " " + MathHelper.formatDouble(attachMoveDistance, 4) + " blocks away");
     }
 
     if (user.receives(MessageChannel.DEBUG_MOUNTS)) {
-      player.sendMessage(IntavePlugin.prefix() + "Mounting " + ridingEntity.entityName() + " " + MathHelper.formatDouble(attachMoveDistance, 4) + " blocks away");
+      user.sendMessage(IntavePlugin.prefix() + "Mounting " + ridingEntity.entityName() + " " + MathHelper.formatDouble(attachMoveDistance, 4) + " blocks away");
     }
   }
 
@@ -1755,7 +1755,7 @@ public final class MovementMetadata implements SimulationEnvironment {
       return;
     }
     if (IntaveControl.DEBUG_MOUNTING) {
-      player.sendMessage(ChatColor.RED + "Dismounting " + vehicle.entityName() + " " + reason);
+      user.sendMessage(ChatColor.RED + "Dismounting " + vehicle.entityName() + " " + reason);
       System.out.println("Dismounting " + vehicle.entityName() + " " + reason);
       Thread.dumpStack();
     }
@@ -1772,12 +1772,12 @@ public final class MovementMetadata implements SimulationEnvironment {
           "TELEPORT ACTION RESULT source=VEHICLE_DISMOUNT accepted=" + teleported
         );
         if (user.receives(MessageChannel.DEBUG_TELEPORT)) {
-          player.sendMessage(IntavePlugin.prefix() + "Teleport to " + player.getLocation().getBlockX() + " " + player.getLocation().getBlockY() + " " + player.getLocation().getBlockZ() + " " + " because " + ChatColor.RED + " you dismounted a vehicle");
+          user.sendMessage(IntavePlugin.prefix() + "Teleport to " + player.getLocation().getBlockX() + " " + player.getLocation().getBlockY() + " " + player.getLocation().getBlockZ() + " " + " because " + ChatColor.RED + " you dismounted a vehicle");
         }
       });
     }
     if (user.receives(MessageChannel.DEBUG_MOUNTS)) {
-      player.sendMessage(IntavePlugin.prefix() + "Unmounting " + vehicle.entityName() + " for " + reason.toLowerCase() + " " + (positionReset ? "(with position reset)" : ""));
+      user.sendMessage(IntavePlugin.prefix() + "Unmounting " + vehicle.entityName() + " for " + reason.toLowerCase() + " " + (positionReset ? "(with position reset)" : ""));
     }
     activeTick(VEHICLE_DETACHMENT);
     this.vehicle = null;

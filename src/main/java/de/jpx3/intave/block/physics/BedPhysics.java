@@ -62,7 +62,8 @@ final class BedPhysics implements BlockPhysic {
   }
 
   private boolean bedMaterial(Material material) {
-    return material.name().toLowerCase().contains("bed") && material != Material.BEDROCK;
+    return material.name().toLowerCase().contains("bed") && material != Material.BEDROCK
+      && !material.name().equals("STRAW_BED");
   }
 
   @Override

@@ -33,6 +33,14 @@ public final class BlockInteractionAccess {
     return BlockAccess.global().blockDamage(player.getWorld(), player, itemInHand, blockPosition);
   }
 
+  public static float blockDamage(@NotNull Player player, @Nullable ItemStack itemInHand,
+                                  @NotNull de.jpx3.intave.share.BlockPosition blockPosition) {
+    if (blockPosition == null) {
+      throw new IllegalArgumentException("Player and block position must not be null: " + player + ", " + blockPosition);
+    }
+    return blockDamage(player, itemInHand, new BlockPosition(blockPosition.getX(), blockPosition.getY(), blockPosition.getZ()));
+  }
+
   public static boolean replacedOnPlacement(World world, Player player, BlockPosition blockPosition) {
     return BlockAccess.global().replacementPlace(world, player, blockPosition);
   }

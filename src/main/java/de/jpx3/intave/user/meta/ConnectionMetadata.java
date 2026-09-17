@@ -345,6 +345,10 @@ public final class ConnectionMetadata {
   }
 
   public void noteMount(int entityId, int vehicleId) {
+    Integer previousVehicle = entityVehicles.get(entityId);
+    if (previousVehicle != null && previousVehicle != vehicleId) {
+      noteDismount(entityId);
+    }
     entityVehicles.put(entityId, vehicleId);
     entityMounts.computeIfAbsent(vehicleId, k -> new HashSet<>()).add(entityId);
   }

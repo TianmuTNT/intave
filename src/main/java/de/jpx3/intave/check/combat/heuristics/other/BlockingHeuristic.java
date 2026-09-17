@@ -15,6 +15,8 @@ import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.wrappers.EnumWrappers;
+import de.jpx3.intave.packet.reader.BlockDigReader;
+import de.jpx3.intave.packet.reader.PacketReaders;
 import de.jpx3.intave.check.combat.Heuristics;
 import de.jpx3.intave.check.combat.heuristics.ClassicHeuristic;
 import de.jpx3.intave.check.combat.heuristics.HeuristicsClassicType;
@@ -92,7 +94,11 @@ public final class BlockingHeuristic extends ClassicHeuristic<BlockingHeuristic.
     }
 
     if (packet.getType() == PacketType.Play.Client.BLOCK_DIG) {
-      EnumWrappers.PlayerDigType playerDigType = packet.getPlayerDigTypes().readSafely(0);
+      EnumWrappers.PlayerDigType playerDigType;
+      try (BlockDigReader reader = PacketReaders.readerOf(packet)) {
+        playerDigType = reader.action();
+      }
+      if (playerDigType == null) return;
       if (playerDigType == EnumWrappers.PlayerDigType.RELEASE_USE_ITEM) {
         meta.releasedItemAfterClientTick = true;
         meta.ventosFreundlicherBoolean = true;

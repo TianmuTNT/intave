@@ -111,7 +111,7 @@ public final class DesyncWatchdog extends Module {
               location.add(0, 1, 0);
             }
             if (user.receives(MessageChannel.DEBUG_TELEPORT)) {
-              player.sendMessage(IntavePlugin.prefix() + "You were instructed to teleport to " + MathHelper.formatPosition(location) + " due to desync.");
+              user.sendMessage(IntavePlugin.prefix() + "You were instructed to teleport to " + MathHelper.formatPosition(location) + " due to desync.");
             }
             PacketLogging logging = Modules.tracker().packetLogging();
             logging.logSystemMessage(user, () ->

@@ -44,7 +44,7 @@ public final class UserPlayerContainer implements PlayerContainer {
   @Override
   public void debug(String message) {
     if (IntaveControl.DEBUG_HEURISTICS) {
-      user.player().sendMessage("[debug] " + message);
+      user.sendMessage("[debug] " + message);
       System.out.println("[debug] " + message);
     }
   }

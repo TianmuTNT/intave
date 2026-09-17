@@ -86,6 +86,7 @@ public final class AccuracyHitboxCornerHeuristic extends ClassicHeuristic<Accura
   public void receiveMovement(PacketEvent event) {
     Player player = event.getPlayer();
     User user = userOf(player);
+    if (!user.meta().protocol().sendsAttackSwingPackets()) return;
     AttackMetadata attackData = user.meta().attack();
     MovementMetadata movementData = user.meta().movement();
     PerfectAttackMeta heuristicMeta = metaOf(user);

@@ -106,7 +106,7 @@ public final class PeriodicEntityCoverageSelector {
       if (!traced.contains(entity)) {
         entityRemovalListener.accept(user, entity);
         if (user.meta().connection().debugEntityTracing) {
-          player.sendMessage(ChatColor.LIGHT_PURPLE + "Removed " + entity.entityName()+"/"+entity.entityId() + " " + entity.boundingBox() + " from " + user.player().getName());
+          user.sendMessage(ChatColor.LIGHT_PURPLE + "Removed " + entity.entityName()+"/"+entity.entityId() + " " + entity.boundingBox() + " from " + user.player().getName());
         }
       }
     }
@@ -115,7 +115,7 @@ public final class PeriodicEntityCoverageSelector {
       if (!lastTraced.contains(entity)) {
         entityAdditionListener.accept(user, entity);
         if (user.meta().connection().debugEntityTracing) {
-          player.sendMessage(ChatColor.LIGHT_PURPLE + "Added " + entity.entityName()+"/"+entity.entityId() + " " + entity.boundingBox() + " to " + user.player().getName());
+          user.sendMessage(ChatColor.LIGHT_PURPLE + "Added " + entity.entityName()+"/"+entity.entityId() + " " + entity.boundingBox() + " to " + user.player().getName());
         }
       }
     }

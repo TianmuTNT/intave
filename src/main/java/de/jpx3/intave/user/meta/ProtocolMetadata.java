@@ -25,6 +25,7 @@ import java.util.*;
 import static de.jpx3.intave.entity.position.RotationTarget.*;
 
 public final class ProtocolMetadata {
+  public static int VER_26_3 = 777; // 26.3
   public static int VER_26_2 = 776; // 26.2
   public static int VER_26_1_1 = 775; // 26.1 - 26.1.1
   public static int VER_1_21_11 = 774; // 1.21.11
@@ -297,6 +298,10 @@ public final class ProtocolMetadata {
     return protocolVersion >= VER_1_19_2;
   }
 
+  public boolean fluidFlowBlockingTag() {
+    return protocolVersion >= VER_26_3;
+  }
+
   public boolean selfAcknowledgePlacements() {
     return protocolVersion >= VER_1_19_2 && !MinecraftVersions.VER1_19_2.atOrAbove();
   }
@@ -389,6 +394,12 @@ public final class ProtocolMetadata {
 
   public boolean sendsInputs() {
     return protocolVersion >= VER_1_21_2 && MinecraftVersions.VER1_21_2.atOrAbove();
+  }
+
+  public boolean sendsAttackSwingPackets() {
+    // 26.3 attacks imply their swing; Punch represents an attack on empty space.
+    // A 26.3 server also no longer exposes the old swing packet for translated clients.
+    return protocolVersion < VER_26_3 && MinecraftVersions.VER26_3.below();
   }
 
   public void setLocale(String locale) {

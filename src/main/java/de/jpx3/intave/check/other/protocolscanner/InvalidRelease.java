@@ -14,6 +14,7 @@ package de.jpx3.intave.check.other.protocolscanner;
 import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.wrappers.EnumWrappers;
+import de.jpx3.intave.packet.reader.BlockDigReader;
 import de.jpx3.intave.IntavePlugin;
 import de.jpx3.intave.check.CheckPart;
 import de.jpx3.intave.check.other.ProtocolScanner;
@@ -36,11 +37,11 @@ public final class InvalidRelease extends CheckPart<ProtocolScanner> {
 	}
 
 	@PacketSubscription(packetsIn = BLOCK_DIG)
-	public void checkValidateRelease(PacketEvent event) {
+	public void checkValidateRelease(PacketEvent event, BlockDigReader reader) {
 		PacketContainer packet = event.getPacket();
 		Player player = event.getPlayer();
 		User user = userOf(player);
-		EnumWrappers.PlayerDigType digType = packet.getPlayerDigTypes().readSafely(0);
+		EnumWrappers.PlayerDigType digType = reader.action();
 		if (digType == null || user.protocolVersion() < 47) {
 			return;
 		}
@@ -58,7 +59,7 @@ public final class InvalidRelease extends CheckPart<ProtocolScanner> {
 				inventory.lastFoodConsumptionBlockRequest = System.currentTimeMillis();
 				inventory.releaseItemNextTick();
 				if (user.receives(MessageChannel.DEBUG_ITEM_RESETS)) {
-					user.player().sendMessage(IntavePlugin.prefix() + "Requesting item usage reset because of " + ChatColor.RED + "an invalid release packet");
+					user.sendMessage(IntavePlugin.prefix() + "Requesting item usage reset because of " + ChatColor.RED + "an invalid release packet");
 				}
 			}
 		}

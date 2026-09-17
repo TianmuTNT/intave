@@ -11,9 +11,24 @@
 
 package de.jpx3.intave.packet.reader;
 
+import de.jpx3.intave.adapter.MinecraftVersions;
+
 public final class AnimationReader extends EntityReader {
 	public Animation animation() {
-		return Animation.values()[packet().getIntegers().read(1)];
+		return decodeAnimation(packet().getIntegers().read(1), MinecraftVersions.VER26_3.atOrAbove());
+	}
+
+	static Animation decodeAnimation(int id, boolean modern) {
+		// 26.3 moved swings to ClientboundSwingAnimationPacket and renumbered the remaining actions.
+		if (modern) {
+			switch (id) {
+				case 0: return Animation.WAKEUP;
+				case 1: return Animation.CRIT;
+				case 2: return Animation.CRIT_MAGIC;
+				default: return null;
+			}
+		}
+		return id >= 0 && id < Animation.values().length ? Animation.values()[id] : null;
 	}
 
 	public enum Animation {

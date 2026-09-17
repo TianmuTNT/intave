@@ -64,6 +64,9 @@ class BaseSimulator extends Simulator {
   }
 
   private void moveOutOfBlocks(User user, Motion motion, SimulationEnvironment environment) {
+    if (user.meta().protocol().protocolVersion() >= ProtocolMetadata.VER_26_3 && environment.isInVehicle()) {
+      return;
+    }
     BoundingBox boundingBox = environment.boundingBox();
     Position position = environment.lastPosition();
     double scaledWidth = boundingBox.width() * 0.35d;
@@ -702,7 +705,9 @@ class BaseSimulator extends Simulator {
     if (result.collidedVertically()) {
       if (result.onGround()) {
         Material effectBlock = environment.collideMaterial();
-        restitution = !(-currentMotionY < gravity)
+        boolean belowBounceThreshold = user.meta().protocol().protocolVersion() >= ProtocolMetadata.VER_26_3
+          ? -currentMotionY <= gravity : -currentMotionY < gravity;
+        restitution = !belowBounceThreshold
           && !suppressingBounce
           && (HONEY_BLOCK != null && !HONEY_BLOCK.equals(effectBlock))
           ? Math.max(restitution, BlockProperties.of(effectBlock).bounceRestitution())

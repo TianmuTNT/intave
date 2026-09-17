@@ -695,7 +695,7 @@ public final class MovementDispatcher extends Module {
 
   private void releaseItem(User user) {
     if (user.receives(MessageChannel.DEBUG_ITEM_RESETS)) {
-      user.player().sendMessage(IntavePlugin.prefix() + "Applying item usage reset as requested");
+      user.sendMessage(IntavePlugin.prefix() + "Applying item usage reset as requested");
     }
     Player player = user.player();
     ProtocolManager protocolManager = ProtocolLibrary.getProtocolManager();
@@ -704,7 +704,7 @@ public final class MovementDispatcher extends Module {
       inventory.blockNextArrow = true;
       inventory.lastBlockArrowRequest = System.currentTimeMillis();
       if (user.receives(MessageChannel.DEBUG_ITEM_RESETS)) {
-        user.player().sendMessage(IntavePlugin.prefix() + "Requesting arrow block as player is also holding a bow on item usage reset");
+        user.sendMessage(IntavePlugin.prefix() + "Requesting arrow block as player is also holding a bow on item usage reset");
       }
     }
     inventory.lastFoodConsumptionBlockRequest = System.currentTimeMillis();
@@ -717,7 +717,7 @@ public final class MovementDispatcher extends Module {
     updatePlayerHandItem(player);
     Synchronizer.synchronize(user, player::updateInventory);
     if (IntaveControl.DEBUG_ITEM_USAGE) {
-      player.sendMessage(ChatColor.DARK_PURPLE + "Release item");
+      user.sendMessage(ChatColor.DARK_PURPLE + "Release item");
     }
   }
 
@@ -964,7 +964,7 @@ public final class MovementDispatcher extends Module {
     if (reader.entityId() == player.getEntityId()) {
       Motion motion = reader.motion();
       if (IntaveControl.DEBUG_VELOCITY_RECEIVE) {
-        player.sendMessage("§a" + MathHelper.formatMotion(motion));
+        user.sendMessage("§a" + MathHelper.formatMotion(motion));
       }
       MetadataBundle meta = user.meta();
       MovementMetadata movementData = meta.movement();
@@ -1387,7 +1387,7 @@ public final class MovementDispatcher extends Module {
         if (allowSprinting(user)) {
           movementData.setSprinting(true);
           if (IntaveControl.DEBUG_PLAYER_ACTIONS || user.receives(MessageChannel.DEBUG_PLAYER_ACTIONS)) {
-            user.player().sendMessage(ChatColor.WHITE + "Start sprinting " + meta.attack().attackPastTicks);
+            user.sendMessage(ChatColor.WHITE + "Start sprinting " + meta.attack().attackPastTicks);
           }
         }
         break;
@@ -1395,7 +1395,7 @@ public final class MovementDispatcher extends Module {
         int ticksSprinting = movementData.ticks(SPRINTING);
         movementData.setSprinting(false);
         if (IntaveControl.DEBUG_PLAYER_ACTIONS || user.receives(MessageChannel.DEBUG_PLAYER_ACTIONS)) {
-          user.player().sendMessage(ChatColor.BLACK + "Stop sprinting after " + ticksSprinting + " " + meta.attack().attackPastTicks);
+          user.sendMessage(ChatColor.BLACK + "Stop sprinting after " + ticksSprinting + " " + meta.attack().attackPastTicks);
         }
         break;
       case PRESS_SHIFT_KEY:
@@ -1411,7 +1411,7 @@ public final class MovementDispatcher extends Module {
           if (protocol.serversideElytra()) {
             movementData.gliding = true;
             if (IntaveControl.DEBUG_ELYTRA) {
-              user.player().sendMessage(ChatColor.GREEN + "Activated elytra flying (START_FALL_FLYING)");
+              user.sendMessage(ChatColor.GREEN + "Activated elytra flying (START_FALL_FLYING)");
             }
           }
         }
@@ -1466,7 +1466,7 @@ public final class MovementDispatcher extends Module {
       movementData.setSneaking(true);
     }
     if (IntaveControl.DEBUG_PLAYER_ACTIONS || user.receives(MessageChannel.DEBUG_PLAYER_ACTIONS)) {
-      user.player().sendMessage(ChatColor.GREEN + "Start sneaking " + movementData.sneaking);
+      user.sendMessage(ChatColor.GREEN + "Start sneaking " + movementData.sneaking);
     }
   }
 
@@ -1477,7 +1477,7 @@ public final class MovementDispatcher extends Module {
 //    );
     movementData.setSneaking(false);
     if (IntaveControl.DEBUG_PLAYER_ACTIONS || user.receives(MessageChannel.DEBUG_PLAYER_ACTIONS)) {
-      user.player().sendMessage(ChatColor.RED + "Stop sneaking after " + movementData.ticks(SNEAKING));
+      user.sendMessage(ChatColor.RED + "Stop sneaking after " + movementData.ticks(SNEAKING));
     }
   }
 

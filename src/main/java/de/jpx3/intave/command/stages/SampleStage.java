@@ -37,9 +37,9 @@ public final class SampleStage extends CommandStage {
   )
   public void sinksCommand(User user) {
     Nayoro nayoro = Modules.nayoro();
-    user.player().sendMessage(ChatColor.GRAY + "Active sinks:");
+    user.sendMessage(ChatColor.GRAY + "Active sinks:");
     for (EventSink eventSink : nayoro.sinksOf(user)) {
-      user.player().sendMessage(ChatColor.GRAY + " - " + eventSink.getClass().getSimpleName());
+      user.sendMessage(ChatColor.GRAY + " - " + eventSink.getClass().getSimpleName());
     }
   }
 
@@ -53,23 +53,23 @@ public final class SampleStage extends CommandStage {
 
       @Override
       public void visit(EntitySpawnEvent event) {
-        user.player().sendMessage(ChatColor.GRAY + "SPAWN: " + event.id() + " " + event.size() + " " + event.name());
+        user.sendMessage(ChatColor.GRAY + "SPAWN: " + event.id() + " " + event.size() + " " + event.name());
         entities.add(event.id());
       }
 
       @Override
       public void visit(EntityRemoveEvent event) {
-        user.player().sendMessage(ChatColor.GRAY + "REMOVE: " + event.id());
+        user.sendMessage(ChatColor.GRAY + "REMOVE: " + event.id());
         if (!entities.remove(event.id())) {
-          user.player().sendMessage(ChatColor.RED + "Entity " + event.id() + " was not spawned before!");
+          user.sendMessage(ChatColor.RED + "Entity " + event.id() + " was not spawned before!");
         }
       }
 
       @Override
       public void visit(AttackEvent event) {
-        user.player().sendMessage(ChatColor.GRAY + "ATTACK: " + event.source() + " -> " + event.target());
+        user.sendMessage(ChatColor.GRAY + "ATTACK: " + event.source() + " -> " + event.target());
         if (!entities.contains(event.target())) {
-          user.player().sendMessage(ChatColor.RED + "Entity " + event.target() + " was not spawned before!");
+          user.sendMessage(ChatColor.RED + "Entity " + event.target() + " was not spawned before!");
         }
       }
 
@@ -78,7 +78,7 @@ public final class SampleStage extends CommandStage {
         return "EC/anonymous";
       }
     });
-    user.player().sendMessage(ChatColor.GREEN + "Entity control enabled");
+    user.sendMessage(ChatColor.GREEN + "Entity control enabled");
   }
 
   public static SampleStage singletonInstance() {

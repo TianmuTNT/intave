@@ -1,0 +1,104 @@
+-1 is unresolved
+0 is unknown
+up to 3 is 1.7
+up to 4 is 1.7.5
+up to 5 is 1.7.10
+up to 46 is 1.8
+up to 47 is 1.8.9
+up to 107 is 1.9
+up to 108 is 1.9.1
+up to 109 is 1.9.2
+up to 110 is 1.9.3
+up to 210 is 1.10.1
+up to 315 is 1.11
+up to 316 is 1.11.1
+up to 335 is 1.12
+up to 338 is 1.12.1
+up to 340 is 1.12.2
+up to 393 is 1.13
+up to 401 is 1.13.1
+up to 404 is 1.13.2
+up to 477 is 1.14
+up to 480 is 1.14.1
+up to 485 is 1.14.2
+up to 490 is 1.14.3
+up to 498 is 1.14.4
+up to 573 is 1.15
+up to 575 is 1.15.1
+up to 578 is 1.15.2
+up to 735 is 1.16
+up to 736 is 1.16.1
+up to 751 is 1.16.2
+up to 753 is 1.16.3
+up to 754 is 1.16.5
+up to 755 is 1.17
+up to 756 is 1.17.1
+up to 757 is 1.18
+up to 758 is 1.18.2
+up to 759 is 1.19
+up to 760 is 1.19.2
+up to 761 is 1.19.3
+up to 762 is 1.19.4
+up to 763 is 1.20.1
+up to 764 is 1.20.2
+up to 765 is 1.20.3
+up to 766 is 1.20.6
+up to 767 is 1.21
+up to 768 is 1.21.3
+up to 774 is 1.21.11
+up to 775 is 26.1.1
+up to 776 is 26.2
+up to 777 is 26.3
+
+# Exact released versions for native packet decoding; the display ranges above can group releases.
+# Format: release <protocol> is <comma-separated versions>. No nearest-version guessing.
+release 47 is 1.8,1.8.1,1.8.2,1.8.3,1.8.4,1.8.5,1.8.6,1.8.7,1.8.8,1.8.9
+release 107 is 1.9
+release 108 is 1.9.1
+release 109 is 1.9.2
+release 110 is 1.9.3,1.9.4
+release 210 is 1.10,1.10.1,1.10.2
+release 315 is 1.11
+release 316 is 1.11.1,1.11.2
+release 335 is 1.12
+release 338 is 1.12.1
+release 340 is 1.12.2
+release 393 is 1.13
+release 401 is 1.13.1
+release 404 is 1.13.2
+release 477 is 1.14
+release 480 is 1.14.1
+release 485 is 1.14.2
+release 490 is 1.14.3
+release 498 is 1.14.4
+release 573 is 1.15
+release 575 is 1.15.1
+release 578 is 1.15.2
+release 735 is 1.16
+release 736 is 1.16.1
+release 751 is 1.16.2
+release 753 is 1.16.3
+release 754 is 1.16.4,1.16.5
+release 755 is 1.17
+release 756 is 1.17.1
+release 757 is 1.18,1.18.1
+release 758 is 1.18.2
+release 759 is 1.19
+release 760 is 1.19.1,1.19.2
+release 761 is 1.19.3
+release 762 is 1.19.4
+release 763 is 1.20,1.20.1
+release 764 is 1.20.2
+release 765 is 1.20.3,1.20.4
+release 766 is 1.20.5,1.20.6
+release 767 is 1.21,1.21.1
+release 768 is 1.21.2,1.21.3
+release 769 is 1.21.4
+release 770 is 1.21.5
+release 771 is 1.21.6
+release 772 is 1.21.7,1.21.8
+release 773 is 1.21.9,1.21.10
+release 774 is 1.21.11
+release 775 is 26.1,26.1.1,26.1.2
+release 776 is 26.2
+release 777 is 26.3

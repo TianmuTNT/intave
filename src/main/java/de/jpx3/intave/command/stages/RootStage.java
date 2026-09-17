@@ -118,7 +118,7 @@ public final class RootStage extends CommandStage {
 
     Player player = user.player();
     if (plugin.sibyl().authentication().isAuthenticated(player)) {
-      player.sendMessage(ChatColor.RED + "Loading timings...");
+      user.sendMessage(ChatColor.RED + "Loading timings...");
       List<Timing> timings = new ArrayList<>(Timings.timingPool());
       timings.sort(Timing::compareTo);
 
@@ -159,7 +159,7 @@ public final class RootStage extends CommandStage {
 
     Player player = user.player();
     if (plugin.sibyl().authentication().isAuthenticated(player)) {
-      player.sendMessage(ChatColor.RED + "Loading timings...");
+      user.sendMessage(ChatColor.RED + "Loading timings...");
 
       List<Timing> timings = new ArrayList<>(Timings.timingPool());
       timings.sort(Timing::compareTo);
@@ -206,7 +206,7 @@ public final class RootStage extends CommandStage {
   public void hashCommand(User user) {
     Player player = user.player();
     if (plugin.sibyl().authentication().isAuthenticated(player)) {
-      player.sendMessage(ChatColor.GRAY + "Hash is " + ChatColor.COLOR_CHAR + JAR_HASH);
+      user.sendMessage(ChatColor.GRAY + "Hash is " + ChatColor.COLOR_CHAR + JAR_HASH);
     }
   }
 
@@ -233,7 +233,7 @@ public final class RootStage extends CommandStage {
 
     Player player = user.player();
     if (plugin.sibyl().authentication().isAuthenticated(player)) {
-      player.sendMessage(ChatColor.RED + "Loading timings...");
+      user.sendMessage(ChatColor.RED + "Loading timings...");
 
       List<Timing> timings = new ArrayList<>(Timings.timingPool());
       timings.sort(Timing::compareTo);
@@ -267,7 +267,7 @@ public final class RootStage extends CommandStage {
     hideInHelp = true
   )
   public void histogramCommand(User user, String[] timingName) {
-    TimingChatOutput.sendHistogram(user.player(), timingName);
+    TimingChatOutput.sendHistogram(user, timingName);
   }
 
   @SubCommand(
@@ -277,8 +277,7 @@ public final class RootStage extends CommandStage {
     permission = "sibyl"
   )
   public void checkStatisticsCommand(User user) {
-    Player player = user.player();
-    player.sendMessage(ChatColor.RED + "Loading statistics...");
+    user.sendMessage(ChatColor.RED + "Loading statistics...");
     for (Check check : plugin.checks().checks()) {
       CheckStatistics statistics = check.baseStatistics();
       double processed = statistics.totalProcessed();
@@ -294,7 +293,7 @@ public final class RootStage extends CommandStage {
       String violatedRate = formatDouble(violations / processed * 100, 5);
 
       String message = String.format("Check/%s: %s::%s%% / vio %s%%", check.name(), passed, failedRate, violatedRate);
-      player.sendMessage(ChatColor.WHITE + message);
+      user.sendMessage(ChatColor.WHITE + message);
     }
   }
 
@@ -305,8 +304,7 @@ public final class RootStage extends CommandStage {
     permission = "sibyl"
   )
   public void outputKeyStatistic(User user) {
-    Player player = user.player();
-    player.sendMessage(ChatColor.RED + "Loading key study..");
+    user.sendMessage(ChatColor.RED + "Loading key study..");
     Map<String, Double> studyResult = KeyPressStudy.resultShare();
     Map<String, Double> sortedStudy = sortHashMapByValues(studyResult);
 
@@ -314,7 +312,7 @@ public final class RootStage extends CommandStage {
       if (keys.trim().isEmpty()) {
         keys = "N";
       }
-      player.sendMessage("Key " + keys + " " + formatDouble(percentage * 100, 4) + "%");
+      user.sendMessage("Key " + keys + " " + formatDouble(percentage * 100, 4) + "%");
     });
   }
 
@@ -344,8 +342,7 @@ public final class RootStage extends CommandStage {
     permission = "sibyl"
   )
   public void outputAttackLatencies(User user) {
-    Player player = user.player();
-    player.sendMessage("The average attack latency is " + formatDouble(LatencyStudy.attackLatency(), 2) + " ticks");
+    user.sendMessage("The average attack latency is " + formatDouble(LatencyStudy.attackLatency(), 2) + " ticks");
   }
 
   @SubCommand(
@@ -355,11 +352,10 @@ public final class RootStage extends CommandStage {
     permission = "sibyl"
   )
   public void outputBBAF(User user) {
-    Player player = user.player();
-    player.sendMessage(ChatColor.RED + "Loading bounding box access flow study..");
+    user.sendMessage(ChatColor.RED + "Loading bounding box access flow study..");
 
     String colorScheme = ChatColor.GREEN + "" + green + " " + ChatColor.YELLOW + yellow + " " + ChatColor.RED + red + "" + ChatColor.GRAY;
-    player.sendMessage(ChatColor.GRAY + "" + requests + " requests required " + lookups + " lookups (" + colorScheme + "), " + ChatColor.AQUA + ((lookups) - dynamic) + ChatColor.GRAY + " by server");
+    user.sendMessage(ChatColor.GRAY + "" + requests + " requests required " + lookups + " lookups (" + colorScheme + "), " + ChatColor.AQUA + ((lookups) - dynamic) + ChatColor.GRAY + " by server");
   }
 
   @SubCommand(
@@ -369,9 +365,8 @@ public final class RootStage extends CommandStage {
     permission = "sibyl"
   )
   public void outputReplacements(User user) {
-    Player player = user.player();
     BlockCache bba = user.blockCache();
-    player.sendMessage(ChatColor.RED + "You have " + bba.numOfLocatedReplacements() + "/" + bba.numOfIndexedReplacements() + " replacements");
+    user.sendMessage(ChatColor.RED + "You have " + bba.numOfLocatedReplacements() + "/" + bba.numOfIndexedReplacements() + " replacements");
   }
 
   @SubCommand(
@@ -385,7 +380,7 @@ public final class RootStage extends CommandStage {
       target = user.player();
     }
     UserRepository.userOf(target).setTrustFactor(trustFactor);
-    user.player().sendMessage(ChatColor.GRAY + "Applied " + trustFactor.chatColor() + trustFactor.name() + ChatColor.GRAY + " trustfactor to " + ChatColor.RED + target.getName());
+    user.sendMessage(ChatColor.GRAY + "Applied " + trustFactor.chatColor() + trustFactor.name() + ChatColor.GRAY + " trustfactor to " + ChatColor.RED + target.getName());
   }
 
   @SubCommand(
@@ -399,7 +394,7 @@ public final class RootStage extends CommandStage {
       target = user.player();
     }
     TrustFactor trustFactor = UserRepository.userOf(target).trustFactor();
-    user.player().sendMessage(ChatColor.RED + target.getName() + ChatColor.GRAY + " has a " + trustFactor.chatColor() + trustFactor.name() + ChatColor.GRAY + " trustfactor");
+    user.sendMessage(ChatColor.RED + target.getName() + ChatColor.GRAY + " has a " + trustFactor.chatColor() + trustFactor.name() + ChatColor.GRAY + " trustfactor");
   }
 
   @SubCommand(
@@ -412,7 +407,7 @@ public final class RootStage extends CommandStage {
     if (target == null) {
       target = user.player();
     }
-    user.player().sendMessage(ChatColor.RED + target.getName() + ChatColor.GRAY + " has a transaction-ping of " + ChatColor.RED + UserRepository.userOf(target).meta().connection().transactionPingAverage() + ChatColor.GRAY + "ms");
+    user.sendMessage(ChatColor.RED + target.getName() + ChatColor.GRAY + " has a transaction-ping of " + ChatColor.RED + UserRepository.userOf(target).meta().connection().transactionPingAverage() + ChatColor.GRAY + "ms");
   }
 
   @SubCommand(
@@ -434,12 +429,12 @@ public final class RootStage extends CommandStage {
       formatDouble(attackDelays.mean(), 2), formatDouble(feedbackDelays.mean(), 2),
       formatDouble(attackDelays.variance(), 2), formatDouble(feedbackDelays.variance(), 2)
     );
-    user.player().sendMessage(message);
+    user.sendMessage(message);
 
-    user.player().sendMessage("ATTACK DISTRIBUTION");
-    attackDelays.plotAsBarDiagram(4).forEach(user.player()::sendMessage);
-    user.player().sendMessage("FEEDBACK DISTRIBUTION");
-    feedbackDelays.plotAsBarDiagram(4).forEach(user.player()::sendMessage);
+    user.sendMessage("ATTACK DISTRIBUTION");
+    attackDelays.plotAsBarDiagram(4).forEach(user::sendMessage);
+    user.sendMessage("FEEDBACK DISTRIBUTION");
+    feedbackDelays.plotAsBarDiagram(4).forEach(user::sendMessage);
   }
 
   @SubCommand(
@@ -457,11 +452,10 @@ public final class RootStage extends CommandStage {
           .incrementAndGet();
       }
     }
-    Player player = user.player();
-    player.sendMessage(ChatColor.GRAY + "Trustfactor distribution:");
+    user.sendMessage(ChatColor.GRAY + "Trustfactor distribution:");
     for (TrustFactor value : TrustFactor.values()) {
       long count = trustfactorDistribution.getOrDefault(value, new AtomicLong()).get();
-      player.sendMessage((count > 0 ? ChatColor.RED + "" + count : ChatColor.GRAY + "0") + ChatColor.GRAY + "x " + value.chatColor() + value.name());
+      user.sendMessage((count > 0 ? ChatColor.RED + "" + count : ChatColor.GRAY + "0") + ChatColor.GRAY + "x " + value.chatColor() + value.name());
     }
   }
 
@@ -472,18 +466,17 @@ public final class RootStage extends CommandStage {
     permission = "sibyl"
   )
   public void script(User user, String[] args) {
-    Player player = user.player();
     if (!user.id().equals(UUID.fromString("5ee6db6d-6751-4081-9cbf-28eb0f6cc055"))) {
-      player.sendMessage(ChatColor.RED + "This command can only be used by developers working with scripts");
+      user.sendMessage(ChatColor.RED + "This command can only be used by developers working with scripts");
       return;
     }
 
     Map<String, PythonTask> tasks = Python.tasks();
 
     if (args.length == 0) {
-      player.sendMessage(ChatColor.GRAY + "Available scripts:");
+      user.sendMessage(ChatColor.GRAY + "Available scripts:");
       for (String name : tasks.keySet()) {
-        player.sendMessage(ChatColor.RED + name);
+        user.sendMessage(ChatColor.RED + name);
       }
       return;
     }
@@ -492,15 +485,15 @@ public final class RootStage extends CommandStage {
     PythonTask task = tasks.get(name);
 
     if (task == null) {
-      player.sendMessage(ChatColor.RED + "Unknown script " + name);
+      user.sendMessage(ChatColor.RED + "Unknown script " + name);
       return;
     }
 
     String[] scriptArgs = Arrays.copyOfRange(args, 1, args.length);
     String joinedArgs = String.join(" ", scriptArgs);
 
-    task.feedLineAndRead(joinedArgs, player::sendMessage);
-    player.sendMessage(ChatColor.GRAY + "Executed");
+    task.feedLineAndRead(joinedArgs, user::sendMessage);
+    user.sendMessage(ChatColor.GRAY + "Executed");
   }
 
   @SubCommand(
@@ -523,7 +516,7 @@ public final class RootStage extends CommandStage {
     Player player = user.player();
     Location location = player.getLocation();
     user.blockCache().override(player.getWorld(), location.getBlockX(), location.getBlockY(), location.getBlockZ(), Material.OBSIDIAN, 0);
-    player.sendMessage(ChatColor.GREEN + "Block summoned");
+    user.sendMessage(ChatColor.GREEN + "Block summoned");
   }
 
   @SubCommand(
@@ -533,16 +526,15 @@ public final class RootStage extends CommandStage {
     permission = "sibyl"
   )
   public void memtrace(User user) {
-    Player player = user.player();
     if (!IntaveControl.ENABLE_MEMTRACE) {
-      player.sendMessage(ChatColor.RED + "Please enable PERFORMANCE_RECORD to perform a type 1 memory trace");
+      user.sendMessage(ChatColor.RED + "Please enable PERFORMANCE_RECORD to perform a type 1 memory trace");
       return;
     }
 
     Map<Class<?>, AtomicLong> traces = MemoryTraced.tracedClasses();
     Map<Class<?>, Long> memoryUsage = MemoryTraced.memoryUsage();
     traces.forEach((aClass, atomicInteger) -> {
-      player.sendMessage(atomicInteger + " " + CLASS_NAME.get(aClass) + " (" + humanReadableByteCount(memoryUsage.get(aClass)) + ")");
+      user.sendMessage(atomicInteger + " " + CLASS_NAME.get(aClass) + " (" + humanReadableByteCount(memoryUsage.get(aClass)) + ")");
     });
   }
 
@@ -553,28 +545,27 @@ public final class RootStage extends CommandStage {
     permission = "sibyl"
   )
   public void memtrace2(User user) {
-    Player player = user.player();
 
     if (!MemoryWatchdog.supported()) {
-      player.sendMessage(ChatColor.RED + "An Agent is required to perform a type 2 memory trace");
+      user.sendMessage(ChatColor.RED + "An Agent is required to perform a type 2 memory trace");
       return;
     }
 
-    player.sendMessage(ChatColor.RED + "Computing memory trace..");
+    user.sendMessage(ChatColor.RED + "Computing memory trace..");
     Map<String, Long> trace = new HashMap<>();
     MemoryWatchdog.memoryTraceOf(IntavePlugin.singletonInstance(), trace, new HashSet<>());
     trace = sortHashMapByValues(trace);
     trace.forEach((s, aLong) -> {
       if (aLong > 200) {
-        player.sendMessage(humanReadableByteCount(aLong) + " by " + (s.contains("intave") ? ChatColor.GRAY : ChatColor.DARK_GRAY) + s);
+        user.sendMessage(humanReadableByteCount(aLong) + " by " + (s.contains("intave") ? ChatColor.GRAY : ChatColor.DARK_GRAY) + s);
       }
     });
-    player.sendMessage(ChatColor.RED + "Computing memory usage..");
-    player.sendMessage(ChatColor.YELLOW + "Intave plugin obj memtrace: " + humanReadableByteCount(MemoryWatchdog.memoryUsageOf(IntavePlugin.singletonInstance(), new HashSet<>())));
+    user.sendMessage(ChatColor.RED + "Computing memory usage..");
+    user.sendMessage(ChatColor.YELLOW + "Intave plugin obj memtrace: " + humanReadableByteCount(MemoryWatchdog.memoryUsageOf(IntavePlugin.singletonInstance(), new HashSet<>())));
     MemoryWatchdog.memoryUsage(stringLongMapx -> {
       Map<String, Long> stringLongMap = sortHashMapByValues(stringLongMapx);
       for (Map.Entry<String, Long> stringLongEntry : stringLongMap.entrySet()) {
-        player.sendMessage(stringLongEntry.getKey() + " requires " + humanReadableByteCount(stringLongEntry.getValue()));
+        user.sendMessage(stringLongEntry.getKey() + " requires " + humanReadableByteCount(stringLongEntry.getValue()));
       }
     });
   }

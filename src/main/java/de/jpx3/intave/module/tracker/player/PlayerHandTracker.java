@@ -16,17 +16,16 @@ import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.reflect.StructureModifier;
 import com.comphenix.protocol.wrappers.BlockPosition;
 import com.comphenix.protocol.wrappers.EnumWrappers;
+import de.jpx3.intave.packet.reader.BlockDigReader;
 import de.jpx3.intave.IntaveControl;
 import de.jpx3.intave.IntavePlugin;
 import de.jpx3.intave.adapter.MinecraftVersions;
-import de.jpx3.intave.klass.Lookup;
 import de.jpx3.intave.module.Module;
 import de.jpx3.intave.module.Modules;
 import de.jpx3.intave.module.linker.bukkit.BukkitEventSubscription;
 import de.jpx3.intave.module.linker.packet.ListenerPriority;
 import de.jpx3.intave.module.linker.packet.PacketSubscription;
 import de.jpx3.intave.packet.PacketSender;
-import de.jpx3.intave.packet.converter.BlockPositionConverter;
 import de.jpx3.intave.player.ItemProperties;
 import de.jpx3.intave.user.MessageChannel;
 import de.jpx3.intave.user.User;
@@ -124,7 +123,7 @@ public class PlayerHandTracker extends Module {
         inventoryData.blockNextArrow = true;
         inventoryData.lastBlockArrowRequest = System.currentTimeMillis();
         if (user.receives(MessageChannel.DEBUG_ITEM_RESETS)) {
-          user.player().sendMessage(IntavePlugin.prefix() + " Detected item switch on active item, released hand and blocking impending arrow shot");
+          user.sendMessage(IntavePlugin.prefix() + " Detected item switch on active item, released hand and blocking impending arrow shot");
         }
       }
     }
@@ -216,17 +215,17 @@ public class PlayerHandTracker extends Module {
       BLOCK_DIG
     }
   )
-  public void receiveBlockDigging(PacketEvent event) {
+  public void receiveBlockDigging(PacketEvent event, BlockDigReader reader) {
     Player player = event.getPlayer();
     User user = UserRepository.userOf(player);
     InventoryMetadata inventoryData = user.meta().inventory();
 
     PacketContainer packet = event.getPacket();
-    EnumWrappers.PlayerDigType digType = packet.getPlayerDigTypes().read(0);
+    EnumWrappers.PlayerDigType digType = reader.action();
+    if (digType == null) return;
 
-    BlockPosition blockPosition = event.getPacket().getModifier()
-      .withType(Lookup.serverClass("BlockPosition"), BlockPositionConverter.threadConverter())
-      .read(0);
+    BlockPosition blockPosition = reader.blockPosition();
+    if (blockPosition == null) return;
 
     if (digType == EnumWrappers.PlayerDigType.RELEASE_USE_ITEM
       && !inventoryData.handActive()
@@ -237,7 +236,7 @@ public class PlayerHandTracker extends Module {
     }
 
     if (IntaveControl.DEBUG_ITEM_USAGE) {
-      player.sendMessage("Digtype: " + digType);
+      user.sendMessage("Digtype: " + digType);
     }
 
     switch (digType) {

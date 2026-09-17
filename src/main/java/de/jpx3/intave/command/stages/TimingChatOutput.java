@@ -15,6 +15,7 @@ import de.jpx3.intave.IntavePlugin;
 import de.jpx3.intave.diagnostic.timings.Timing;
 import de.jpx3.intave.diagnostic.timings.TimingData;
 import de.jpx3.intave.diagnostic.timings.Timings;
+import de.jpx3.intave.user.User;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.HoverEvent;
 import net.md_5.bungee.api.chat.TextComponent;
@@ -41,18 +42,18 @@ final class TimingChatOutput {
     player.spigot().sendMessage(component);
   }
 
-  static void sendHistogram(Player player, String[] timingNameParts) {
+  static void sendHistogram(User user, String[] timingNameParts) {
     String timingName = String.join(" ", timingNameParts);
     Timing timing = Timings.lookupTimingByName(timingName);
     if (timing == null) {
-      player.sendMessage(IntavePlugin.prefix() + ChatColor.RED + "Unknown timing " + timingName);
+      user.sendMessage(IntavePlugin.prefix() + ChatColor.RED + "Unknown timing " + timingName);
       return;
     }
 
     List<TimingData.DurationBucket> buckets = timing.callDurationHistogram(HISTOGRAM_BUCKET_COUNT);
-    player.sendMessage(ChatColor.DARK_GRAY + "--- " + timing.coloredName() + ChatColor.DARK_GRAY + " duration histogram ---");
+    user.sendMessage(ChatColor.DARK_GRAY + "--- " + timing.coloredName() + ChatColor.DARK_GRAY + " duration histogram ---");
     if (buckets.isEmpty()) {
-      player.sendMessage(ChatColor.GRAY + "No duration samples have been recorded yet.");
+      user.sendMessage(ChatColor.GRAY + "No duration samples have been recorded yet.");
       return;
     }
 
@@ -77,13 +78,13 @@ final class TimingChatOutput {
         : Math.max(1, (int) Math.round(bucket.samples() * HISTOGRAM_BAR_WIDTH / (double) largestBucket));
       double share = bucket.samples() * 100d / sampleCount;
       String bar = barLength == 0 ? ChatColor.DARK_GRAY + "-" : ChatColor.AQUA + repeat('\u2588', barLength);
-      player.sendMessage(
+      user.sendMessage(
         ChatColor.GRAY + padRight(rangeLabels[i], rangeColumnWidth) + ChatColor.DARK_GRAY + " | " + bar + " " +
           ChatColor.GRAY + bucket.samples() + " (" + formatDouble(share, 1) + "%)"
       );
     }
 
-    player.sendMessage(
+    user.sendMessage(
       ChatColor.DARK_GRAY + "Samples " + ChatColor.GRAY + sampleCount +
         ChatColor.DARK_GRAY + " | avg " + ChatColor.GRAY + formatDuration((long) timing.averageCallDurationInNanos()) +
         ChatColor.DARK_GRAY + " | p99 " + ChatColor.GRAY + formatDuration(timing.p99CallDurationInNanos())

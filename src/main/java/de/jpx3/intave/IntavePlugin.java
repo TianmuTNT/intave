@@ -191,6 +191,7 @@ public final class IntavePlugin extends JavaPlugin {
       componentLoader.loadComponents();
 
       ProtocolLibraryAdapter.checkIfOutdated();
+      ProtocolLibraryAdapter.prepareItemStackConversion();
 
       // check again, after ProtocolLibs availability is guaranteed
       logger.checkColorAvailability();

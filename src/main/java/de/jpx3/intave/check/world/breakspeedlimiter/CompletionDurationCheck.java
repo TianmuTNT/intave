@@ -4,16 +4,16 @@ import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolLibrary;
 import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.events.PacketEvent;
-import com.comphenix.protocol.wrappers.BlockPosition;
+import de.jpx3.intave.share.BlockPosition;
 import com.comphenix.protocol.wrappers.EnumWrappers;
 import com.comphenix.protocol.wrappers.WrappedBlockData;
+import de.jpx3.intave.packet.reader.BlockDigReader;
 import de.jpx3.intave.block.access.BlockInteractionAccess;
 import de.jpx3.intave.block.access.VolatileBlockAccess;
 import de.jpx3.intave.block.variant.BlockVariantNativeAccess;
 import de.jpx3.intave.check.MetaCheckPart;
 import de.jpx3.intave.check.world.BreakSpeedLimiter;
 import de.jpx3.intave.executor.Synchronizer;
-import de.jpx3.intave.klass.Lookup;
 import de.jpx3.intave.math.MathHelper;
 import de.jpx3.intave.module.Modules;
 import de.jpx3.intave.module.linker.packet.ListenerPriority;
@@ -22,7 +22,6 @@ import de.jpx3.intave.module.violation.Violation;
 import de.jpx3.intave.module.violation.ViolationContext;
 import de.jpx3.intave.module.violation.ViolationProcessor;
 import de.jpx3.intave.packet.PacketSender;
-import de.jpx3.intave.packet.converter.BlockPositionConverter;
 import de.jpx3.intave.reflect.access.ReflectiveEntityAccess;
 import de.jpx3.intave.user.User;
 import de.jpx3.intave.user.UserRepository;
@@ -31,6 +30,7 @@ import de.jpx3.intave.user.meta.InventoryMetadata;
 import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Cancellable;
 import org.bukkit.inventory.ItemStack;
 
 import static de.jpx3.intave.module.linker.packet.PacketId.Client.*;
@@ -89,20 +89,16 @@ public final class CompletionDurationCheck extends MetaCheckPart<BreakSpeedLimit
       BLOCK_DIG
     }
   )
-  public void receiveBlockAction(PacketEvent event) {
-    Player player = event.getPlayer();
+  public void receiveBlockAction(Player player, Cancellable cancellable, BlockDigReader reader) {
     User user = userOf(player);
     BreakSpeedFinishMeta meta = metaOf(user);
 //    ProtocolMetadata clientData = user.meta().protocol();
     InventoryMetadata inventoryData = user.meta().inventory();
 
     ItemStack heldItem = inventoryData.heldItem();
-    PacketContainer packet = event.getPacket();
-//    BlockPosition blockPosition = packet.getBlockPositionModifier().read(0);
-    BlockPosition blockPosition = event.getPacket().getModifier()
-      .withType(Lookup.serverClass("BlockPosition"), BlockPositionConverter.threadConverter())
-      .read(0);
-    EnumWrappers.PlayerDigType digType = packet.getPlayerDigTypes().read(0);
+    BlockPosition blockPosition = reader.nativeBlockPosition();
+    EnumWrappers.PlayerDigType digType = reader.action();
+    if (digType == null || blockPosition == null) return;
 
     switch (digType) {
       case START_DESTROY_BLOCK: {
@@ -128,7 +124,7 @@ public final class CompletionDurationCheck extends MetaCheckPart<BreakSpeedLimit
 //              .withVL(10).build();
 //            ViolationContext violationContext = violationProcessor.processViolation(violation);
 //            if (violationContext.shouldCounterThreat()) {
-//              event.setCancelled(true);
+//              cancellable.setCancelled(true);
 //              refreshBlocksAround(player, blockPosition.toLocation(player.getWorld()));
 //            }
 //          }
@@ -155,7 +151,7 @@ public final class CompletionDurationCheck extends MetaCheckPart<BreakSpeedLimit
             .withVL(10).build();
           ViolationContext violationContext = violationProcessor.processViolation(violation);
           if (violationContext.shouldCounterThreat()) {
-            event.setCancelled(true);
+            cancellable.setCancelled(true);
             refreshBlocksAround(player, blockPosition.toLocation(player.getWorld()));
           }
         }
@@ -192,7 +188,7 @@ public final class CompletionDurationCheck extends MetaCheckPart<BreakSpeedLimit
     Object handle = BlockVariantNativeAccess.nativeVariantAccess(block);
     WrappedBlockData blockData = WrappedBlockData.fromHandle(handle);
     packet.getBlockData().write(0, blockData);
-    BlockPosition position = new BlockPosition(location.getBlockX(), location.getBlockY(), location.getBlockZ());
+    com.comphenix.protocol.wrappers.BlockPosition position = new com.comphenix.protocol.wrappers.BlockPosition(location.getBlockX(), location.getBlockY(), location.getBlockZ());
     packet.getBlockPositionModifier().write(0, position);
     PacketSender.sendServerPacket(player, packet);
   }

@@ -14,6 +14,7 @@ package de.jpx3.intave.check.combat.heuristics.other;
 import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.wrappers.EnumWrappers;
+import de.jpx3.intave.packet.reader.BlockDigReader;
 import de.jpx3.intave.check.combat.Heuristics;
 import de.jpx3.intave.check.combat.heuristics.ClassicHeuristic;
 import de.jpx3.intave.check.combat.heuristics.HeuristicsClassicType;
@@ -51,10 +52,10 @@ public class ToolSwitchHeuristic extends ClassicHeuristic<ToolSwitchHeuristic.To
       PacketId.Client.BLOCK_DIG
     }
   )
-  public void receiveBlockBreakAction(PacketEvent event) {
+  public void receiveBlockBreakAction(PacketEvent event, BlockDigReader reader) {
     Player player = event.getPlayer();
-    PacketContainer packet = event.getPacket();
-    EnumWrappers.PlayerDigType digType = packet.getPlayerDigTypes().read(0);
+    EnumWrappers.PlayerDigType digType = reader.action();
+    if (digType == null) return;
     ToolSwitchHeuristicMeta meta = metaOf(player);
 
     // Update breaking state ticks

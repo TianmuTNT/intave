@@ -63,6 +63,23 @@ val testShadedJar = tasks.register<Test>("testShadedJar") {
   systemProperty("intave.test.shadedJar", bundledJarFile.get().asFile.absolutePath)
 }
 
+val testProtocolResources = tasks.register<Test>("testProtocolResources") {
+  group = "verification"
+  description = "Verifies protocol versions and reflection mappings from the bundled distribution JAR."
+  dependsOn(bundledJar, tasks.named("testClasses"))
+
+  testClassesDirs = testSourceSet.output.classesDirs
+  classpath = files(bundledJarFile) + testSourceSet.output + testLibraries
+  useJUnitPlatform()
+
+  filter {
+    includeTestsMatching("de.jpx3.intave.version.*")
+    includeTestsMatching("de.jpx3.intave.version.ServerProtocolVersionTest")
+    includeTestsMatching("de.jpx3.intave.klass.locate.LocateFileCompilerTest")
+  }
+  systemProperty("intave.test.protocolJar", bundledJarFile.get().asFile.absolutePath)
+}
+
 val prepareLibraryCache = tasks.register<Sync>("prepareLibraryCache") {
   into(testLibraryCache)
 
@@ -102,5 +119,5 @@ val testMinimalJar = tasks.register<Test>("testMinimalJar") {
 }
 
 tasks.named("check") {
-  dependsOn(testShadedJar, testMinimalJar)
+  dependsOn(testShadedJar, testMinimalJar, testProtocolResources)
 }

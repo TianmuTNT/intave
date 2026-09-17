@@ -75,6 +75,11 @@ public final class NoSwingHeuristic extends ClassicHeuristic<NoSwingHeuristic.No
     SimulationEnvironment movementData = user.meta().movement();
     NoSwingMeta meta = metaOf(user);
 
+    if (!user.meta().protocol().sendsAttackSwingPackets()) {
+      prepareNextTick(meta);
+      return;
+    }
+
     if (movementData.ticksPast(TELEPORT) == 0) {
       return;
     }

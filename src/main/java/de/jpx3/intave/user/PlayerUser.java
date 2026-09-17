@@ -558,6 +558,13 @@ final class PlayerUser implements User {
 
   @Override
   public void sendMessage(String message) {
+    if (message == null) {
+      return;
+    }
+    if (Bukkit.isPrimaryThread()) {
+      player().sendMessage(message);
+      return;
+    }
     Synchronizer.synchronize(this, () -> {
       Player player = player();
       if (player.isOnline()) {

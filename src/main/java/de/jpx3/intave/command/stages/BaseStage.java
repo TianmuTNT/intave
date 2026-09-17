@@ -114,10 +114,9 @@ public final class BaseStage extends CommandStage {
     permission = "intave.command.verbose"
   )
   public void verboseCommand(User user, @Optional Player[] selectedPlayers) {
-    Player player = user.player();
     if (user.receives(MessageChannel.VIOLATION_SIMPLE)) {
       user.toggleReceive(MessageChannel.VIOLATION_SIMPLE);
-      player.sendMessage(IntavePlugin.prefix() + "You are " + ChatColor.RED + "no longer " + IntavePlugin.defaultColor() + "receiving simple violation messages");
+			user.sendMessage(IntavePlugin.prefix() + "You are " + ChatColor.RED + "no longer " + IntavePlugin.defaultColor() + "receiving simple violation messages");
     }
 
     boolean receivesVerbose = user.receives(MessageChannel.VIOLATION_FINE);
@@ -130,7 +129,7 @@ public final class BaseStage extends CommandStage {
         List<UUID> uniqueIds = Arrays.stream(selectedPlayers).map(Entity::getUniqueId).distinct().collect(Collectors.toList());
         user.setChannelConstraint(MessageChannel.VIOLATION_FINE, player1 -> uniqueIds.contains(player1.getUniqueId()));
         String names = ChatColor.RED + describePlayerList(Arrays.stream(selectedPlayers).map(Entity::getName).map(s -> ChatColor.RED + s).collect(Collectors.toList()));
-        player.sendMessage(IntavePlugin.prefix() + "You have specified " + modeName + " fine violation output to " + names);
+				user.sendMessage(IntavePlugin.prefix() + "You have specified " + modeName + " fine violation output to " + names);
         return;
       }
     } /*else if (selectedPlayers == null && !IntavePlugin.singletonInstance().sibyl().isAuthenticated(player)) {
@@ -142,16 +141,16 @@ public final class BaseStage extends CommandStage {
     user.removeChannelConstraint(MessageChannel.VIOLATION_FINE);
 
     if (receivesVerbose) {
-      player.sendMessage(IntavePlugin.prefix() + "You are " + ChatColor.RED + "no longer " + IntavePlugin.defaultColor() + "receiving fine violation output");
+			user.sendMessage(IntavePlugin.prefix() + "You are " + ChatColor.RED + "no longer " + IntavePlugin.defaultColor() + "receiving fine violation output");
     } else {
       if (selectedPlayers == null) {
         String target = ChatColor.RED + "everyone";
-        player.sendMessage(IntavePlugin.prefix() + "You are " + ChatColor.GREEN + "now " + IntavePlugin.defaultColor() + "receiving fine violation output for " + target);
+				user.sendMessage(IntavePlugin.prefix() + "You are " + ChatColor.GREEN + "now " + IntavePlugin.defaultColor() + "receiving fine violation output for " + target);
       } else {
         List<UUID> uniqueIds = Arrays.stream(selectedPlayers).map(Entity::getUniqueId).distinct().collect(Collectors.toList());
         user.setChannelConstraint(MessageChannel.VIOLATION_FINE, player1 -> uniqueIds.contains(player1.getUniqueId()));
         String names = ChatColor.RED + describePlayerList(Arrays.stream(selectedPlayers).map(Entity::getName).map(s -> ChatColor.RED + s).collect(Collectors.toList()));
-        player.sendMessage(IntavePlugin.prefix() + "You are " + ChatColor.GREEN + "now" + IntavePlugin.defaultColor() + " receiving fine violation output for " + names);
+				user.sendMessage(IntavePlugin.prefix() + "You are " + ChatColor.GREEN + "now" + IntavePlugin.defaultColor() + " receiving fine violation output for " + names);
       }
     }
   }
@@ -163,14 +162,13 @@ public final class BaseStage extends CommandStage {
     permission = "intave.command.combatmodifiers"
   )
   public void combatModifiersCommand(User user) {
-    Player player = user.player();
     boolean receivesCombatModifiers = user.receives(MessageChannel.COMBAT_MODIFIERS);
 
     user.toggleReceive(MessageChannel.COMBAT_MODIFIERS);
     if (receivesCombatModifiers) {
-      player.sendMessage(IntavePlugin.prefix() + "You are " + ChatColor.RED + "no longer " + IntavePlugin.defaultColor() + "receiving combat modifier debugs");
-    } else {
-      player.sendMessage(IntavePlugin.prefix() + "You are " + ChatColor.GREEN + "now " + IntavePlugin.defaultColor() + "receiving combat modifier debugs");
+			user.sendMessage(IntavePlugin.prefix() + "You are " + ChatColor.RED + "no longer " + IntavePlugin.defaultColor() + "receiving combat modifier debugs");
+		} else {
+			user.sendMessage(IntavePlugin.prefix() + "You are " + ChatColor.GREEN + "now " + IntavePlugin.defaultColor() + "receiving combat modifier debugs");
     }
   }
 
@@ -193,7 +191,6 @@ public final class BaseStage extends CommandStage {
     permission = "intave.command.verbose"
   )
   public void debug(User user, DebugType type) {
-    Player player = user.player();
     boolean receivesDebug = user.receives(type.channel);
 
     user.toggleReceive(type.channel);
@@ -201,9 +198,9 @@ public final class BaseStage extends CommandStage {
 
     String cleanType = type.name().toLowerCase().replace("_", " ");
     if (receivesDebug) {
-      player.sendMessage(IntavePlugin.prefix() + "You are " + ChatColor.RED + "no longer " + IntavePlugin.defaultColor() + "receiving " + ChatColor.RED + cleanType + IntavePlugin.defaultColor() + " debug messages");
-    } else {
-      player.sendMessage(IntavePlugin.prefix() + "You are " + ChatColor.GREEN + "now " + IntavePlugin.defaultColor() + "receiving " + ChatColor.RED + cleanType + IntavePlugin.defaultColor() + " debug messages");
+			user.sendMessage(IntavePlugin.prefix() + "You are " + ChatColor.RED + "no longer " + IntavePlugin.defaultColor() + "receiving " + ChatColor.RED + cleanType + IntavePlugin.defaultColor() + " debug messages");
+		} else {
+			user.sendMessage(IntavePlugin.prefix() + "You are " + ChatColor.GREEN + "now " + IntavePlugin.defaultColor() + "receiving " + ChatColor.RED + cleanType + IntavePlugin.defaultColor() + " debug messages");
     }
   }
 
@@ -256,12 +253,12 @@ public final class BaseStage extends CommandStage {
 //      if (isSameActionTarget) {
 //      }
       actionBar.unsubscribe(user);
-      player.sendMessage(IntavePlugin.prefix() + "Unsubscribed from " + ChatColor.RED + selectedPlayer.getName() + IntavePlugin.defaultColor() + "'s clicks");
+			user.sendMessage(IntavePlugin.prefix() + "Unsubscribed from " + ChatColor.RED + selectedPlayer.getName() + IntavePlugin.defaultColor() + "'s clicks");
       return;
     }
 
     actionBar.subscribe(user, UserRepository.userOf(selectedPlayer), DisplayType.CLICKS);
-    player.sendMessage(IntavePlugin.prefix() + "Subscribed to " + ChatColor.RED + selectedPlayer.getName() + IntavePlugin.defaultColor() + "'s clicks");
+		user.sendMessage(IntavePlugin.prefix() + "Subscribed to " + ChatColor.RED + selectedPlayer.getName() + IntavePlugin.defaultColor() + "'s clicks");
   }
 
   @SubCommand(
@@ -284,7 +281,6 @@ public final class BaseStage extends CommandStage {
     permission = "intave.command.notify"
   )
   public void notifyCommand(User user, @Optional Player[] selectedPlayers) {
-    Player player = user.player();
     boolean receivesNotify = user.receives(MessageChannel.NOTIFY);
 
     if (user.receives(MessageChannel.NOTIFY)) {
@@ -292,7 +288,7 @@ public final class BaseStage extends CommandStage {
         List<UUID> uniqueIds = Arrays.stream(selectedPlayers).map(Entity::getUniqueId).distinct().collect(Collectors.toList());
         user.setChannelConstraint(MessageChannel.NOTIFY, player1 -> uniqueIds.contains(player1.getUniqueId()));
         String names = ChatColor.RED + describePlayerList(Arrays.stream(selectedPlayers).map(Entity::getName).map(s -> ChatColor.RED + s).collect(Collectors.toList()));
-        player.sendMessage(IntavePlugin.prefix() + "You have specified notifications to " + names);
+				user.sendMessage(IntavePlugin.prefix() + "You have specified notifications to " + names);
         return;
       }
     }
@@ -301,16 +297,16 @@ public final class BaseStage extends CommandStage {
     user.removeChannelConstraint(MessageChannel.NOTIFY);
 
     if (receivesNotify) {
-      player.sendMessage(IntavePlugin.prefix() + "You are " + ChatColor.RED + "no longer " + IntavePlugin.defaultColor() + "receiving notifications");
+			user.sendMessage(IntavePlugin.prefix() + "You are " + ChatColor.RED + "no longer " + IntavePlugin.defaultColor() + "receiving notifications");
     } else {
       if (selectedPlayers == null) {
         String target = ChatColor.RED + "everyone";
-        player.sendMessage(IntavePlugin.prefix() + "You are " + ChatColor.GREEN + "now " + IntavePlugin.defaultColor() + "receiving notifications for " + target);
+				user.sendMessage(IntavePlugin.prefix() + "You are " + ChatColor.GREEN + "now " + IntavePlugin.defaultColor() + "receiving notifications for " + target);
       } else {
         List<UUID> uniqueIds = Arrays.stream(selectedPlayers).map(Entity::getUniqueId).distinct().collect(Collectors.toList());
         user.setChannelConstraint(MessageChannel.NOTIFY, player1 -> uniqueIds.contains(player1.getUniqueId()));
         String names = ChatColor.RED + describePlayerList(Arrays.stream(selectedPlayers).map(Entity::getName).map(s -> ChatColor.RED + s).collect(Collectors.toList()));
-        player.sendMessage(IntavePlugin.prefix() + "You are " + ChatColor.GREEN + "now" + IntavePlugin.defaultColor() + " receiving notifications for " + names);
+				user.sendMessage(IntavePlugin.prefix() + "You are " + ChatColor.GREEN + "now" + IntavePlugin.defaultColor() + " receiving notifications for " + names);
       }
     }
   }
@@ -352,7 +348,7 @@ public final class BaseStage extends CommandStage {
     recorder.setRecordingStatus(user, !recording);
 
     if (recording) {
-      user.player().sendMessage(ChatColor.RED + "Stopped recording..");
+			user.sendMessage(ChatColor.RED + "Stopped recording..");
 
       File file;
       File resourcesFolder = new File(IntavePlugin.singletonInstance().dataFolder(), "../../../../src/test/resources");
@@ -371,16 +367,16 @@ public final class BaseStage extends CommandStage {
       try {
         recorder.saveRecordingDataTo(user, file);
       } catch (Throwable e) {
-        user.player().sendMessage(ChatColor.RED + "Failed to save recording: " + e.getMessage());
+				user.sendMessage(ChatColor.RED + "Failed to save recording: " + e.getMessage());
         return;
       }
       try {
-        user.player().sendMessage(ChatColor.GREEN + "Saved recording to " + file.getCanonicalPath());
+				user.sendMessage(ChatColor.GREEN + "Saved recording to " + file.getCanonicalPath());
       } catch (IOException e) {
-        user.player().sendMessage(ChatColor.GREEN + "Saved recording to " + file.getAbsolutePath());
-      }
-    } else {
-      user.player().sendMessage(ChatColor.GREEN + "Started recording..");
+				user.sendMessage(ChatColor.GREEN + "Saved recording to " + file.getAbsolutePath());
+			}
+		} else {
+			user.sendMessage(ChatColor.GREEN + "Started recording..");
     }
   }
 
@@ -693,8 +689,8 @@ public final class BaseStage extends CommandStage {
     }
   }
 
-  private void sendVersionMessage(CommandSender player) {
-    boolean hasVersionViewPermission = BukkitPermissionCheck.permissionCheck(player, "intave.command");
+	private void sendVersionMessage(CommandSender sender) {
+		boolean hasVersionViewPermission = BukkitPermissionCheck.permissionCheck(sender, "intave.command");
 
     IntaveVersion versionInformation = IntavePlugin.singletonInstance().versions().versionInformation(IntavePlugin.versionTag());
     String version;
@@ -708,11 +704,19 @@ public final class BaseStage extends CommandStage {
     }
 
     String prefix = IntavePlugin.prefix();
-    player.sendMessage(new String[]{
+		String[] messages = {
       prefix + "Running Intave " + version,
       prefix + "Serving as automated cheat-removal and defense tool",
       prefix + "Visit " + ChatColor.UNDERLINE + "intave.de" + IntavePlugin.defaultColor() + " for more information",
-    });
+		};
+		if (sender instanceof Player) {
+			User user = UserRepository.userOf((Player) sender);
+			for (String message : messages) {
+				user.sendMessage(message);
+			}
+		} else {
+			sender.sendMessage(messages);
+		}
   }
 
   public static BaseStage singletonInstance() {

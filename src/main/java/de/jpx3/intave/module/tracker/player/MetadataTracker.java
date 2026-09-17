@@ -15,6 +15,7 @@ import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.wrappers.EnumWrappers.EntityPose;
 import de.jpx3.intave.adapter.MinecraftVersions;
 import de.jpx3.intave.annotate.Nullable;
+import de.jpx3.intave.block.access.VolatileBlockAccess;
 import de.jpx3.intave.check.movement.physics.environment.Pose;
 import de.jpx3.intave.module.Module;
 import de.jpx3.intave.module.linker.packet.PacketSubscription;
@@ -23,6 +24,8 @@ import de.jpx3.intave.share.BlockPosition;
 import de.jpx3.intave.share.Position;
 import de.jpx3.intave.user.User;
 import de.jpx3.intave.user.meta.MovementMetadata;
+import de.jpx3.intave.user.meta.ProtocolMetadata;
+import org.bukkit.Material;
 
 import static de.jpx3.intave.module.linker.packet.PacketId.Server.ENTITY_METADATA;
 
@@ -48,7 +51,8 @@ public final class MetadataTracker extends Module {
 			MovementMetadata movement = user.meta().movement();
 			movement.sleepingBedPosition = sleepingBedPosition;
 			if (sleepingBedPosition != null) {
-				Position newPosition = positionFromBedPosition(sleepingBedPosition);
+				Material bed = VolatileBlockAccess.typeAccess(user, sleepingBedPosition);
+				Position newPosition = positionFromBedPosition(sleepingBedPosition, bed, user.meta().protocol().protocolVersion());
 				movement.setPosition(newPosition);
 				movement.setVerifiedLastPosition(newPosition, "Bed sleep");
 			}
@@ -65,10 +69,13 @@ public final class MetadataTracker extends Module {
 		return reader.bedPosition().orElse(null);
 	}
 
-	private Position positionFromBedPosition(BlockPosition bedPosition) {
+	static Position positionFromBedPosition(BlockPosition bedPosition, Material bed, int protocol) {
+		// 26.3 StrawBedBlock uses the foot's 4/16 outline height; LivingEntity adds 1/8.
+		double height = protocol >= ProtocolMetadata.VER_26_3 && bed.name().equals("STRAW_BED")
+			? 0.375 : 0.6875;
 		return new Position(
 			bedPosition.x() + 0.5,
-			bedPosition.y() + 0.6875,
+			bedPosition.y() + height,
 			bedPosition.z() + 0.5
 		);
 	}

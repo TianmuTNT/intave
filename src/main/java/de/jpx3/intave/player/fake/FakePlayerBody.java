@@ -10,6 +10,7 @@ import de.jpx3.intave.block.access.VolatileBlockAccess;
 import de.jpx3.intave.block.type.BlockTypeAccess;
 import de.jpx3.intave.executor.Synchronizer;
 import de.jpx3.intave.packet.PacketSender;
+import de.jpx3.intave.packet.reader.EntityMovementReader;
 import de.jpx3.intave.share.ClientMath;
 import de.jpx3.intave.user.User;
 import de.jpx3.intave.user.UserRepository;
@@ -142,7 +143,15 @@ public abstract class FakePlayerBody extends FakePlayerIdentity {
     if (move && look) {
       packet = create(PacketType.Play.Server.REL_ENTITY_MOVE_LOOK);
       packet.getIntegers().write(0, identifier());
-      if (POSITION_PROCESSING_1_14) {
+      if (MinecraftVersions.VER26_3.atOrAbove()) {
+        EntityMovementReader.writeLinear263(packet,
+          (short) ((to.getX() - from.getX()) * 4096d),
+          (short) ((to.getY() - from.getY()) * 4096d),
+          (short) ((to.getZ() - from.getZ()) * 4096d));
+        packet.getBytes()
+          .write(0, compressRotation(to.getYaw()))
+          .write(1, compressRotation(to.getPitch()));
+      } else if (POSITION_PROCESSING_1_14) {
         packet.getShorts()
           .write(0, (short) ((to.getX() - from.getX()) * 4096d))
           .write(1, (short) ((to.getY() - from.getY()) * 4096d))
@@ -169,7 +178,12 @@ public abstract class FakePlayerBody extends FakePlayerIdentity {
     } else if (move) {
       packet = create(PacketType.Play.Server.REL_ENTITY_MOVE);
       packet.getIntegers().write(0, identifier());
-      if (POSITION_PROCESSING_1_14) {
+      if (MinecraftVersions.VER26_3.atOrAbove()) {
+        EntityMovementReader.writeLinear263(packet,
+          (short) ((to.getX() - from.getX()) * 4096d),
+          (short) ((to.getY() - from.getY()) * 4096d),
+          (short) ((to.getZ() - from.getZ()) * 4096d));
+      } else if (POSITION_PROCESSING_1_14) {
         packet.getShorts()
           .write(0, (short) ((to.getX() - from.getX()) * 4096d))
           .write(1, (short) ((to.getY() - from.getY()) * 4096d))

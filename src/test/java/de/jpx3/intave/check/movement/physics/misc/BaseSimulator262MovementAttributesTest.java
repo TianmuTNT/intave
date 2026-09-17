@@ -22,6 +22,7 @@ import de.jpx3.intave.check.movement.physics.environment.MovementCharacteristics
 import de.jpx3.intave.check.movement.physics.simulator.Simulators;
 import de.jpx3.intave.player.collider.complex.SimulationResult;
 import de.jpx3.intave.share.Motion;
+import de.jpx3.intave.share.BlockState;
 import de.jpx3.intave.share.Position;
 import de.jpx3.intave.share.Rotation;
 import de.jpx3.intave.test.FakePlayerFactory;
@@ -39,10 +40,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
+import java.lang.reflect.Proxy;
 import java.util.stream.Stream;
 
 import static de.jpx3.intave.user.meta.ProtocolMetadata.VER_26_1_1;
 import static de.jpx3.intave.user.meta.ProtocolMetadata.VER_26_2;
+import static de.jpx3.intave.user.meta.ProtocolMetadata.VER_26_3;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 final class BaseSimulator262MovementAttributesTest {
@@ -256,6 +259,48 @@ final class BaseSimulator262MovementAttributesTest {
     double expected = (restitutionMotion - context.environment.gravity()) * 0.98F;
 
     assertEquals(expected, actual.motionY, EPSILON);
+  }
+
+  @Test
+  void bouncingAtExactlyGravityStopsIn263While262KeepsItsBoundary() {
+    for (int protocol : new int[]{VER_26_2, VER_26_3}) {
+      for (double speed : new double[]{Math.nextDown(0.08D), 0.08D, Math.nextUp(0.08D)}) {
+        TestContext context = context(protocol, materialPlane(Material.SLIME_BLOCK));
+        double gravity = context.environment.gravity();
+        assertEquals(0.08D, gravity);
+        Motion input = new Motion(0.0D, -speed, 0.0D);
+        Motion clipped = Motion.newEmpty();
+        SimulationResult collision = collisionResult(input, clipped, true, false, true, false, false);
+        Motion actual = simulateAfterTick(context, clipped, collision, false, Material.SLIME_BLOCK);
+        boolean bounces = protocol == VER_26_2 ? speed >= gravity : speed > gravity;
+        double expected = ((bounces ? speed : 0.0D) - gravity) * 0.98F;
+        assertEquals(expected, actual.motionY, "protocol=" + protocol + ", speed=" + speed);
+      }
+    }
+  }
+
+  @Test
+  void shelfMushroomsBounceAndStrawBedsDoNot() {
+    assertEquals(0.75F, BlockProperties.of(Material.valueOf("SHELF_MUSHROOM")).bounceRestitution());
+    assertEquals(0.0F, BlockProperties.of(Material.valueOf("STRAW_BED")).bounceRestitution());
+    TestContext context = context(VER_26_3, materialPlane(Material.valueOf("SHELF_MUSHROOM")));
+    Motion input = new Motion(0.0D, -0.5D, 0.0D);
+    Motion clipped = Motion.newEmpty();
+    SimulationResult collision = collisionResult(input, clipped, true, false, true, false, false);
+    Motion actual = simulateAfterTick(context, clipped, collision, false, Material.valueOf("SHELF_MUSHROOM"));
+    assertEquals((0.5D * 0.75F - context.environment.gravity()) * 0.98F, actual.motionY, EPSILON);
+  }
+
+  private static BlockCache materialPlane(Material material) {
+    BlockCache plane = MockFullBlockStaticPlane.createWithHorizontalPlaneAt(49);
+    return (BlockCache) Proxy.newProxyInstance(BlockCache.class.getClassLoader(), new Class<?>[]{BlockCache.class}, (proxy, method, args) -> {
+      Object value = method.invoke(plane, args);
+      if (value == Material.STONE) return material;
+      if (value instanceof BlockState state && state.type() == Material.STONE) {
+        return new BlockState(state.outlineShape(), state.collisionShape(), material, state.variantIndex());
+      }
+      return value;
+    });
   }
 
   private static Motion simulateAfterTick(

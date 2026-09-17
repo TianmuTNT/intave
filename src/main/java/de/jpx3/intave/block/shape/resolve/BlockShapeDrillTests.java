@@ -1,11 +1,22 @@
 package de.jpx3.intave.block.shape.resolve;
 
+import de.jpx3.intave.adapter.MinecraftVersions;
+import de.jpx3.intave.block.access.BlockAccess;
+import de.jpx3.intave.block.cache.BlockCache;
+import de.jpx3.intave.block.cache.BlockCaches;
 import de.jpx3.intave.block.shape.BlockShape;
 import de.jpx3.intave.block.shape.ShapeResolverPipeline;
+import de.jpx3.intave.block.variant.BlockVariantRegister;
+import de.jpx3.intave.check.movement.physics.environment.MockSimulationEnvironment;
+import de.jpx3.intave.player.collider.complex.SimulationResult;
+import de.jpx3.intave.share.BoundingBox;
+import de.jpx3.intave.share.Motion;
 import de.jpx3.intave.test.*;
 import de.jpx3.intave.user.User;
 import de.jpx3.intave.user.UserFactory;
 import de.jpx3.intave.user.UserRepository;
+import de.jpx3.intave.version.ServerProtocolVersion;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
@@ -13,8 +24,14 @@ import org.bukkit.World;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+
+import static de.jpx3.intave.share.Direction.Axis.Y_AXIS;
 
 public final class BlockShapeDrillTests extends IntegrationTests {
   private Block block;
@@ -130,6 +147,102 @@ public final class BlockShapeDrillTests extends IntegrationTests {
     Material type = block.getType();
     BlockShape blockShape = drill.collisionShapeOf(block.getWorld(), player, type, 0, 0, 0, 0);
     assertFalse(blockShape.isCubic());
+  }
+
+  @Test(testCode = "GRASS", severity = Severity.ERROR)
+  public void testGrassCollisionShapes() {
+    if (!MinecraftVersions.VER26_2.atOrAbove()) {
+      return;
+    }
+    // Exercise both the native shape reader and its material/variant caches.
+    ShapeResolverPipeline pipeline = ShapeResolver.createPipelineFor(drill);
+    for (String name : new String[]{"GRASS_BLOCK", "SHORT_GRASS", "TALL_GRASS"}) {
+      Material material = Material.getMaterial(name);
+      assertNotNull(material);
+      assertFalse(BlockVariantRegister.variantIdsOf(material).isEmpty());
+      boolean solid = name.equals("GRASS_BLOCK");
+      for (int variant : BlockVariantRegister.variantIdsOf(material)) {
+        for (ShapeResolverPipeline resolver : new ShapeResolverPipeline[]{drill, pipeline}) {
+          for (int y : new int[]{-32, 0, 64}) {
+            BlockShape shape = resolver.collisionShapeOf(block.getWorld(), player, material, variant, 0, y, 0);
+            if (solid) {
+              assertEquals(List.of(new BoundingBox(0, y, 0, 1, y + 1, 1)), shape.elementaryBoxes());
+              BoundingBox standing = new BoundingBox(0.2, y + 1, 0.2, 0.8, y + 2.8, 0.8);
+              assertEquals(0.0, shape.allowedOffset(Y_AXIS, standing, -0.08));
+            } else if (!shape.isEmpty()) {
+              fail(name + " variant " + variant + " has a collision shape: " + shape.elementaryBoxes());
+            }
+          }
+        }
+      }
+    }
+  }
+
+  @Test(testCode = "GRASS-MOVE", severity = Severity.ERROR)
+  public void testMovementThroughGrassAndOntoGrassBlocks() throws Exception {
+    if (!MinecraftVersions.VER26_2.atOrAbove()) {
+      return;
+    }
+    World world = block.getWorld();
+    // Keep the fixture clear of the generated terrain and restore exact block states.
+    List<org.bukkit.block.BlockState> original = new ArrayList<>();
+    BlockCache cache = BlockCaches.cacheForPlayer(player);
+    User collisionUser = UserFactory.createTestUserFor(player, (usr, key) -> {
+      if (key.equals("protocolVersion")) {
+        return ServerProtocolVersion.current();
+      }
+      if (key.equals("blockCache")) {
+        return cache;
+      }
+      return null;
+    });
+    try {
+      for (int x = 0; x <= 2; x++) {
+        for (int z = 0; z <= 1; z++) {
+          for (int y = 200; y <= 203; y++) {
+            Block fixtureBlock = world.getBlockAt(x, y, z);
+            original.add(fixtureBlock.getState());
+            fixtureBlock.setType(Material.getMaterial(y == 200 ? "GRASS_BLOCK" : "AIR"), false);
+          }
+        }
+      }
+      for (String name : new String[]{"SHORT_GRASS", "TALL_GRASS", "GRASS_BLOCK"}) {
+        world.getBlockAt(1, 201, 0).setType(Material.getMaterial(name), false);
+        cache.invalidateAll();
+          MockSimulationEnvironment environment = new MockSimulationEnvironment();
+          BoundingBox box = new BoundingBox(0.2, 201, 0.2, 0.8, 202.8, 0.8);
+          environment.setBoundingBox(box);
+          environment.setPosition(0.5, 201, 0.5);
+          environment.setOnGround(true);
+          for (double dx : new double[]{0.8, 0.4}) {
+            SimulationResult result = CompletableFuture.supplyAsync(() -> collisionUser.collider().collide(
+              collisionUser, environment, new Motion(dx, -0.08, 0), 0.5, 201, 0.5, false)).get(5, TimeUnit.SECONDS);
+            assertEquals(name.equals("GRASS_BLOCK") ? 1.0 - box.maxX : dx, result.offsetMotion().motionX);
+            assertEquals(0.0, result.offsetMotion().motionY);
+            assertTrue(result.onGround());
+          }
+      }
+    } finally {
+      for (org.bukkit.block.BlockState state : original) {
+        state.update(true, false);
+      }
+    }
+  }
+
+  @Test(testCode = "GRASS-ASYNC", severity = Severity.ERROR)
+  public void testGrassCollisionOffServerThread() throws Exception {
+    if (!MinecraftVersions.VER26_2.atOrAbove()) {
+      return;
+    }
+    block.setType(Material.getMaterial("GRASS_BLOCK"), false);
+    World world = block.getWorld();
+    Material material = block.getType();
+    BlockShape shape = CompletableFuture.supplyAsync(() -> drill.collisionShapeOf(
+      world, player, material, 0, 0, 0, 0)).get(5, TimeUnit.SECONDS);
+    assertEquals(material, CompletableFuture.supplyAsync(() -> BlockAccess.global().typeOf(block)).get(5, TimeUnit.SECONDS));
+    if (!shape.isCubic()) {
+      fail("Loaded grass block has no solid collision shape off the server thread: " + shape.elementaryBoxes());
+    }
   }
 
   @After

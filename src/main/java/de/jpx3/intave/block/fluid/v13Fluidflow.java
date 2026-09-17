@@ -257,6 +257,9 @@ final class v13Fluidflow implements FluidFlow {
 
   private static boolean blocksMovement(User user, BlockPosition position) {
     Material type = VolatileBlockAccess.typeAccess(user, user.player().getWorld(), position.x(), position.y(), position.z());
+    if (user.meta().protocol().fluidFlowBlockingTag()) {
+      return FluidFlowBlocking.contains(type);
+    }
     return MaterialMagic.blocksMovement(type);
   }
 

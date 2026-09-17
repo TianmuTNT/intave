@@ -42,6 +42,7 @@ public final class AccuracyLongTermHeuristic extends ClassicHeuristic<AccuracyLo
   public void evaluateFightAccuracy(PacketEvent event) {
     Player player = event.getPlayer();
     User user = userOf(player);
+    if (!user.meta().protocol().sendsAttackSwingPackets()) return;
     AttackMetadata attackData = user.meta().attack();
     ClickAccuracyMeta heuristicMeta = metaOf(user);
     PacketType packetType = event.getPacketType();

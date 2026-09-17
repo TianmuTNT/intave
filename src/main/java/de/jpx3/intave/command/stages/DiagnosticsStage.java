@@ -164,9 +164,9 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
   public void nerfers(User user) {
     List<PunishmentMetadata.AttackNerfer> attackNerfers = user.meta().punishment().activeNerfers();
     if (attackNerfers.isEmpty()) {
-      user.player().sendMessage(IntavePlugin.prefix() + ChatColor.RED + "No active nerfers");
+      user.sendMessage(IntavePlugin.prefix() + ChatColor.RED + "No active nerfers");
     } else {
-      user.player().sendMessage(IntavePlugin.prefix() + "Active nerfers: " + attackNerfers.stream().map(nerfer -> nerfer.strategy().typeName()).collect(Collectors.joining(", ")));
+      user.sendMessage(IntavePlugin.prefix() + "Active nerfers: " + attackNerfers.stream().map(nerfer -> nerfer.strategy().typeName()).collect(Collectors.joining(", ")));
     }
   }
 
@@ -199,11 +199,10 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
           .incrementAndGet();
       }
     }
-    Player player = user.player();
-    player.sendMessage(ChatColor.GRAY + "Trustfactor distribution:");
+    user.sendMessage(ChatColor.GRAY + "Trustfactor distribution:");
     for (TrustFactor value : TrustFactor.values()) {
       long count = trustfactorDistribution.getOrDefault(value, new AtomicLong()).get();
-      player.sendMessage((count > 0 ? ChatColor.RED + "" + count : ChatColor.GRAY + "0") + ChatColor.GRAY + "x " + value.chatColor() + value.name());
+      user.sendMessage((count > 0 ? ChatColor.RED + "" + count : ChatColor.GRAY + "0") + ChatColor.GRAY + "x " + value.chatColor() + value.name());
     }
   }
 
@@ -217,13 +216,13 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
     try {
       AttackNerfStrategy strategy = AttackNerfStrategy.byName(type);
       if (strategy == null) {
-        user.player().sendMessage(IntavePlugin.prefix() + ChatColor.RED + "Invalid nerf type");
+        user.sendMessage(IntavePlugin.prefix() + ChatColor.RED + "Invalid nerf type");
         return;
       }
       user.nerfPermanently(strategy, "command");
-      user.player().sendMessage(IntavePlugin.prefix() + "Nerf " + strategy.typeName() + " applied");
+      user.sendMessage(IntavePlugin.prefix() + "Nerf " + strategy.typeName() + " applied");
     } catch (Exception exception) {
-      user.player().sendMessage(IntavePlugin.prefix() + ChatColor.RED + "Invalid nerf type");
+      user.sendMessage(IntavePlugin.prefix() + ChatColor.RED + "Invalid nerf type");
     }
   }
 
@@ -234,14 +233,13 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
     permission = "intave.command.diagnostics.performance"
   )
   public void entityCommand(User user) {
-    Player player = user.player();
 
     ConnectionMetadata connection = user.meta().connection();
     int totalEntities = connection.entities().size();
     //    int tickedEntities = connection.tickedEntities().size();
     int tracedEntities = connection.tracedEntities().size();
-    player.sendMessage(IntavePlugin.prefix() + "Monitoring " + ChatColor.RED + totalEntities + IntavePlugin.defaultColor() + " entities, tracing " + ChatColor.RED + tracedEntities + IntavePlugin.defaultColor() + " entities");
-    player.sendMessage(IntavePlugin.prefix() + connection.tracedEntities().stream().map(entity -> entity.entityName() + "/" + entity.entityId()).collect(Collectors.toList()));
+    user.sendMessage(IntavePlugin.prefix() + "Monitoring " + ChatColor.RED + totalEntities + IntavePlugin.defaultColor() + " entities, tracing " + ChatColor.RED + tracedEntities + IntavePlugin.defaultColor() + " entities");
+    user.sendMessage(IntavePlugin.prefix() + connection.tracedEntities().stream().map(entity -> entity.entityName() + "/" + entity.entityId()).collect(Collectors.toList()));
   }
 
   @SubCommand(
@@ -257,45 +255,42 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
         Turtle turtle = player.getWorld().spawn(player.getLocation(), Turtle.class);
         turtle.setPassenger(player);
       });
-      player.sendMessage(IntavePlugin.prefix() + ChatColor.RED + "Turtle spawned");
+      user.sendMessage(IntavePlugin.prefix() + ChatColor.RED + "Turtle spawned");
     } else {
-      player.sendMessage(IntavePlugin.prefix() + ChatColor.RED + "Nah");
+      user.sendMessage(IntavePlugin.prefix() + ChatColor.RED + "Nah");
     }
   }
 
   @SubCommand(selectors = "ntrace", usage = "", description = "Sample click/attack trace", permission = "intave.command.diagnostics.performance")
   public void ntraceCommand(User user) {
-    Player player = user.player();
     Nayoro nayoro = Modules.nayoro();
     nayoro.pushSink(user, new EventSink() {
       @Override
       public void visit(ac.intave.samples.event.ClickEvent event) {
-        player.sendMessage("ClickEvent");
+        user.sendMessage("ClickEvent");
       }
 
       @Override
       public void visit(AttackEvent event) {
-        player.sendMessage("AttackEvent");
+        user.sendMessage("AttackEvent");
       }
 
       @Override
       public void visit(BlockPlaceEvent event) {
-        Synchronizer.synchronize(user, () -> {
-          player.sendMessage("BlockPlaceEvent{");
-          player.sendMessage("  " + event.placedBlock());
-          player.sendMessage("  " + event.againstBlock());
-          player.sendMessage("  " + event.direction());
-          player.sendMessage("  " + event.rotation());
-          player.sendMessage("  " + event.eyePosition());
-          player.sendMessage("  " + event.endOfRaytrace());
-          //        player.sendMessage("  " + event.facingX());
-          //        player.sendMessage("  " + event.facingY());
-          //        player.sendMessage("  " + event.facingZ());
-          player.sendMessage("  " + event.hand());
-          player.sendMessage("  " + event.typeName());
-          player.sendMessage("  " + event.amountInHand());
-          player.sendMessage("}");
-        });
+        user.sendMessage("BlockPlaceEvent{");
+        user.sendMessage("  " + event.placedBlock());
+        user.sendMessage("  " + event.againstBlock());
+        user.sendMessage("  " + event.direction());
+        user.sendMessage("  " + event.rotation());
+        user.sendMessage("  " + event.eyePosition());
+        user.sendMessage("  " + event.endOfRaytrace());
+        //        user.sendMessage("  " + event.facingX());
+        //        user.sendMessage("  " + event.facingY());
+        //        user.sendMessage("  " + event.facingZ());
+        user.sendMessage("  " + event.hand());
+        user.sendMessage("  " + event.typeName());
+        user.sendMessage("  " + event.amountInHand());
+        user.sendMessage("}");
       }
 
       @Override
@@ -303,7 +298,7 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
         return "ntrace/anonymous";
       }
     });
-    player.sendMessage(ChatColor.RED + "Added ntracing");
+    user.sendMessage(ChatColor.RED + "Added ntracing");
   }
 
   @SubCommand(
@@ -313,18 +308,15 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
     permission = "intave.command.diagnostics.performance"
   )
   public void storageTrace(User user) {
-    Player player = user.player();
     PlaytimeStorage storage = user.storageOf(PlaytimeStorage.class);
     if (storage.readTag() != 0) {
-      player.sendMessage("Removing storage-tag");
+      user.sendMessage("Removing storage-tag");
       storage.removeDebugTag();
       return;
     }
-    player.sendMessage("You are now in storage trace mode");
+    user.sendMessage("You are now in storage trace mode");
     storage.setDebugTag();
-    Synchronizer.synchronize(user, () -> {
-      player.sendMessage("Your storage-tag is " + storage.readTag());
-    });
+    user.sendMessage("Your storage-tag is " + storage.readTag());
   }
 
   @SubCommand(
@@ -340,9 +332,7 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
     PlaytimeStorage storage = targetUser.storageOf(PlaytimeStorage.class);
     long minutesPlayed = storage.minutesPlayed();
     long minutesAfk = storage.minutesAfk();
-    Synchronizer.synchronize(user, () -> {
-      player.sendMessage("The player " + targetPlayer.getName() + " has played for " + minutesPlayed + " minutes and was afk for " + minutesAfk + " minutes");
-    });
+    user.sendMessage("The player " + targetPlayer.getName() + " has played for " + minutesPlayed + " minutes and was afk for " + minutesAfk + " minutes");
   }
 
   @SubCommand(
@@ -352,8 +342,7 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
     permission = "intave.command.diagnostics.performance"
   )
   public void etxTraceCommand(User user) {
-    Player player = user.player();
-    player.sendMessage(ChatColor.DARK_PURPLE + "Toggled tracing entity trackings");
+    user.sendMessage(ChatColor.DARK_PURPLE + "Toggled tracing entity trackings");
     user.meta().connection().debugEntityTracing = !user.meta().connection().debugEntityTracing;
   }
 
@@ -396,7 +385,7 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
 //      }
     } catch (Exception exception) {
       exception.printStackTrace();
-      user.player().sendMessage("Invalid protocollib version? Error: " + exception.getMessage());
+      user.sendMessage("Invalid protocollib version? Error: " + exception.getMessage());
     }
   }
 
@@ -410,10 +399,10 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
     Player player = user.player();
     UUID playerId = player.getUniqueId();
     if (cancelBlockYPlayers.remove(playerId)) {
-      player.sendMessage(IntavePlugin.prefix() + ChatColor.RED + "Block Y movement cancellation disabled");
+      user.sendMessage(IntavePlugin.prefix() + ChatColor.RED + "Block Y movement cancellation disabled");
     } else {
       cancelBlockYPlayers.add(playerId);
-      player.sendMessage(IntavePlugin.prefix() + ChatColor.GREEN + "Block Y movement cancellation enabled. Run /intave diagnostics cancelblocky again or logout to disable");
+      user.sendMessage(IntavePlugin.prefix() + ChatColor.GREEN + "Block Y movement cancellation enabled. Run /intave diagnostics cancelblocky again or logout to disable");
     }
   }
 
@@ -440,7 +429,7 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
           double baseDamage = event.getDamage(EntityDamageEvent.DamageModifier.BASE);
           double predictedDamage = DamageModify.attackDamageOf(player) + DamageModify.sharpnessDamageOf(player.getInventory().getItemInMainHand());
           boolean probablyCritical = Math.abs(baseDamage * 1.5 - predictedDamage) < 0.01;
-          player.sendMessage("Dealt " + event.getFinalDamage() + " damage" + (probablyCritical ? " (critical)" : ""));
+          user.sendMessage("Dealt " + event.getFinalDamage() + " damage" + (probablyCritical ? " (critical)" : ""));
         }
       }
     }, plugin);
@@ -451,7 +440,7 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
     Player player = user.player();
     String fullSpecifier = specifier != null ? Arrays.stream(specifier).map(s -> s + " ").collect(Collectors.joining()).trim().toLowerCase(Locale.ROOT) : "";
 
-    player.sendMessage(ChatColor.RED + "Loading timings...");
+    user.sendMessage(ChatColor.RED + "Loading timings...");
     List<Timing> timings = new ArrayList<>(Timings.timingPool());
     timings.sort(Timing::compareTo);
 
@@ -477,7 +466,7 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
     hideInHelp = true
   )
   public void histogramCommand(User user, String[] timingName) {
-    TimingChatOutput.sendHistogram(user.player(), timingName);
+    TimingChatOutput.sendHistogram(user, timingName);
   }
 
   @SubCommand(
@@ -592,7 +581,7 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
   public void teleportSpam(User user) {
     Player player = user.player();
     MovementMetadata movement = user.meta().movement();
-    player.sendMessage(ChatColor.RED + "Logout to stop");
+    user.sendMessage(ChatColor.RED + "Logout to stop");
 
     Task[] task = new Task[1];
     task[0] = Tasks.periodicNamed("Diagnostics.teleportSpam", () -> {
@@ -630,7 +619,7 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
       );
 
       if (user.receives(MessageChannel.DEBUG_TELEPORT)) {
-        player.sendMessage(IntavePlugin.prefix() + "Teleport to " + player.getLocation().getBlockX() + " " + player.getLocation().getBlockY() + " " + player.getLocation().getBlockZ() + " " + " as " + ChatColor.RED + " it was command-requested");
+        user.sendMessage(IntavePlugin.prefix() + "Teleport to " + player.getLocation().getBlockX() + " " + player.getLocation().getBlockY() + " " + player.getLocation().getBlockZ() + " " + " as " + ChatColor.RED + " it was command-requested");
       }
     }, 20, 3).startUserSync(user);
   }
@@ -642,7 +631,7 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
   )
   public void velocitySpam(User user) {
     Player player = user.player();
-    player.sendMessage(ChatColor.RED + "Logout to stop");
+    user.sendMessage(ChatColor.RED + "Logout to stop");
 
     Task[] task = new Task[1];
     task[0] = Tasks.periodicNamed("Diagnostics.velocitySpam", () -> {
@@ -666,7 +655,7 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
   )
   public void flyingSwitch(User user) {
     Player player = user.player();
-    player.sendMessage(ChatColor.RED + "Logout to stop");
+    user.sendMessage(ChatColor.RED + "Logout to stop");
 
     Task[] task = new Task[1];
     task[0] = Tasks.periodicNamed("Diagnostics.flyingSwitch", () -> {
@@ -676,7 +665,7 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
       }
       boolean canFly = player.getAllowFlight();
       Synchronizer.synchronizeDelayed(user, () -> player.setAllowFlight(!canFly), 40);
-      player.sendMessage(IntavePlugin.prefix() + "Flying will be " + ChatColor.RED + (!canFly ? "enabled" : "disabled") + ChatColor.GRAY + " in 2 seconds");
+      user.sendMessage(IntavePlugin.prefix() + "Flying will be " + ChatColor.RED + (!canFly ? "enabled" : "disabled") + ChatColor.GRAY + " in 2 seconds");
     }, 20, 20 * 10).startUserSync(user);
   }
 
@@ -734,7 +723,7 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
     Player player = user.player();
     UUID userId = player.getUniqueId();
 
-    player.sendMessage(ChatColor.RED + "You will need to wait one minute to get feedback again.");
+    user.sendMessage(ChatColor.RED + "You will need to wait one minute to get feedback again.");
     PacketAdapter adapter = new PacketAdapter(IntavePlugin.singletonInstance(), PacketType.Play.Server.TRANSACTION, PacketType.Play.Server.PING) {
       final long timeout = System.currentTimeMillis() + 60000;
 
@@ -744,10 +733,7 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
           ProtocolLibrary.getProtocolManager().removePacketListener(this);
           adapterMap.remove(userId);
 
-          Player blayer = Bukkit.getPlayer(userId);
-          if (blayer.isOnline()) {
-            blayer.sendMessage(IntavePlugin.prefix() + ChatColor.GREEN + "You can now get feedback again.");
-          }
+          user.sendMessage(IntavePlugin.prefix() + ChatColor.GREEN + "You can now get feedback again.");
           return;
         }
         event.setCancelled(true);
@@ -993,7 +979,7 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
   public void onLootChest(User user) {
     ChestLootProvider provider = Modules.find(ChestLootProvider.class);
     if (!user.player().isOp()) {
-      user.player().sendMessage(IntavePlugin.prefix() + ChatColor.RED + "You need to be op to use this command");
+      user.sendMessage(IntavePlugin.prefix() + ChatColor.RED + "You need to be op to use this command");
       return;
     }
     provider.openLootChestCommand(user.player());
@@ -1010,14 +996,14 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
 
     if (nayoro.recordingActiveFor(user)) {
       nayoro.disableRecordingFor(user);
-      user.player().sendMessage(IntavePlugin.prefix() + ChatColor.RED + "Stopped recording");
+      user.sendMessage(IntavePlugin.prefix() + ChatColor.RED + "Stopped recording");
     } else {
       if (classifier == null) {
-        user.player().sendMessage(IntavePlugin.prefix() + ChatColor.RED + "Please specify a classifier");
+        user.sendMessage(IntavePlugin.prefix() + ChatColor.RED + "Please specify a classifier");
         return;
       }
       nayoro.enableRecordingFor(user, Classifier.UNKNOWN, OperationalMode.LOCAL_STORAGE);
-      user.player().sendMessage(IntavePlugin.prefix() + ChatColor.GREEN + "Started recording");
+      user.sendMessage(IntavePlugin.prefix() + ChatColor.GREEN + "Started recording");
     }
   }
 }
