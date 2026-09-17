@@ -19,7 +19,7 @@ Our detection spectrum is grounded by three large pillars: movement simulation, 
 ### Movement Simulation
 
 Intave features one of the most advanced movement simulation engines,
-with exceptional support for all movement features from 1.8 to 26.2.
+with exceptional support for all movement features from 1.8 to 26.3.
 
 ![](docs/assets/ptr-highlights/05-lava-motion.gif)
 
