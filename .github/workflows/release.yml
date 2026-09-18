@@ -1,12 +1,17 @@
 name: Build and Release
 
+# Pushes/PRs build artifacts. Tags prepare drafts; publishing a draft mirrors its assets.
+# The nightly schedule updates dev builds automatically.
 on:
   push:
     branches: [ "master" ]
-    tags: [ "v*" ]
+    tags: [ "**", "!dev-build", "!nightly" ]
   pull_request:
     branches: [ "master" ]
+  release:
+    types: [ published ]
   schedule:
+    # Nightly at 00:00 UTC (01:00 CET / 02:00 CEST).
     - cron: '0 0 * * *'
   workflow_dispatch:
 
@@ -17,64 +22,111 @@ concurrency:
 
 jobs:
   build:
+    name: Build and publish
+    if: >-
+      github.event_name != 'release' ||
+      (github.repository == 'intave/intave' &&
+      github.event.release.tag_name != 'dev-build' && github.event.release.tag_name != 'nightly')
     runs-on: ubuntu-latest
     permissions:
       contents: write
 
     steps:
-      - name: Checkout Code
+      # 1. Build both distributions, or download the exact assets you approved on GitHub.
+      - name: Check out source
         uses: actions/checkout@v6
         with:
           fetch-depth: 0
           fetch-tags: true
 
       - name: Set up JDK 21
+        if: github.event_name != 'release'
         uses: actions/setup-java@v5
         with:
           java-version: '21'
           distribution: 'temurin'
           cache: 'gradle'
 
+      - name: Check publishing scripts
+        run: node --test .github/scripts/*.test.cjs
+
       - name: Build with Gradle
+        if: github.event_name != 'release'
         run: ./gradlew build
 
-      - name: Set Short SHA
+      - name: Determine artifact suffix
+        if: github.event_name != 'release'
         id: vars
-        run: echo "sha_short=$(echo ${{ github.sha }} | cut -c1-7)" >> $GITHUB_OUTPUT
+        run: echo "sha_short=${GITHUB_SHA:0:7}" >> "$GITHUB_OUTPUT"
 
-      - name: Upload Artifact
+      - name: Upload minimal JAR artifact
+        if: github.event_name != 'release'
         uses: actions/upload-artifact@v7
         with:
           name: Intave-${{ steps.vars.outputs.sha_short }}.jar
           path: build/libs/Intave.jar
           archive: false
           retention-days: 7
-      - name: Upload Bundled Artifact
+
+      - name: Upload bundled JAR artifact
+        if: github.event_name != 'release'
         uses: actions/upload-artifact@v7
         with:
           name: Intave-bundled-${{ steps.vars.outputs.sha_short }}.jar
           path: build/libs/Intave-bundled.jar
           archive: false
           retention-days: 7
-      - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/v')
+
+      - name: Download manually approved release assets
+        id: approved_release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+        run: |
+          gh release download --repo "$GITHUB_REPOSITORY" --dir build/libs \
+            --pattern Intave.jar --pattern Intave-bundled.jar -- "$RELEASE_TAG"
+          test -s build/libs/Intave.jar
+          test -s build/libs/Intave-bundled.jar
+
+      # 2. A release tag prepares a draft. Publishing it manually starts directory uploads.
+      # Keep the moving development tags out of this path, including manual runs.
+      - name: Check whether the tag still needs a draft
+        id: draft
+        if: >-
+          github.event_name != 'release' && startsWith(github.ref, 'refs/tags/') &&
+          github.ref_name != 'dev-build' && github.ref_name != 'nightly'
+        uses: actions/github-script@v8
+        with:
+          script: |
+            const tag = context.ref.slice('refs/tags/'.length);
+            const releases = await github.paginate(github.rest.repos.listReleases, {
+              ...context.repo, per_page: 100,
+            });
+            const published = releases.some(release => release.tag_name === tag && !release.draft);
+            core.setOutput('prepare', published ? 'false' : 'true');
+            if (published) core.notice('This tag is already published; leaving the approved release unchanged.');
+
+      - name: Prepare tagged GitHub release draft
+        if: steps.draft.outputs.prepare == 'true'
         uses: softprops/action-gh-release@v2
         with:
           files: |
             build/libs/Intave.jar
             build/libs/Intave-bundled.jar
           generate_release_notes: true
-          draft: false
+          draft: true
           prerelease: false
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Prepare Dev Build Release
+      # 3. Only the nightly schedule refreshes the shared development release.
+      - name: Check nightly build is still current
         id: dev_build
         if: >-
           github.repository == 'intave/intave' &&
           github.ref == 'refs/heads/master' &&
-          (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+          github.event_name == 'schedule'
         uses: actions/github-script@v8
         with:
           script: |
@@ -88,7 +140,7 @@ jobs:
             }
             core.setOutput('publish', publish ? 'true' : 'false');
 
-      - name: Update Dev Build Tag
+      - name: Move dev-build tag to built commit
         if: steps.dev_build.outputs.publish == 'true'
         env:
           BUILD_SHA: ${{ github.sha }}
@@ -96,12 +148,14 @@ jobs:
           git tag --force dev-build "$BUILD_SHA"
           git push --force origin refs/tags/dev-build
 
-      - name: Update Dev Build Release
+      - name: Replace Latest Dev Build assets and notes
+        id: dev_release
         if: steps.dev_build.outputs.publish == 'true'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: dev-build
           name: Latest Dev Build
+          overwrite_files: true
           files: |
             build/libs/Intave.jar
             build/libs/Intave-bundled.jar
@@ -115,84 +169,36 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Prepare Modrinth Dev Build
+      # 4. Mirror manually approved tags or automatic nightly builds to plugin directories.
+      # Version lookup and changelog preparation live beside the Hangar publisher.
+      - name: Prepare Modrinth version
         id: modrinth
         if: >-
           github.repository == 'intave/intave' &&
-          github.ref == 'refs/heads/master' &&
-          (github.event_name == 'push' || github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+          (steps.approved_release.outcome == 'success' || steps.dev_release.outcome == 'success')
         uses: actions/github-script@v8
         env:
           MODRINTH_ID: ${{ vars.MODRINTH_ID || secrets.MODRINTH_ID }}
           MODRINTH_TOKEN: ${{ secrets.MODRINTH_TOKEN }}
         with:
           script: |
-            core.setOutput('publish', 'false');
-            const project = process.env.MODRINTH_ID;
-            if (!project || !process.env.MODRINTH_TOKEN) {
-              core.notice('Modrinth publishing is disabled. Set MODRINTH_ID as a variable or secret and MODRINTH_TOKEN as a secret to enable it.');
-              return;
-            }
+            const prepare = require('./.github/scripts/prepare-modrinth.cjs');
+            await prepare({ core, context, github });
 
-            // Re-running an old workflow must not make an old commit the latest dev build.
-            const { data: branch } = await github.rest.repos.getBranch({
-              ...context.repo,
-              branch: 'master',
-            });
-            if (branch.commit.sha !== context.sha) {
-              core.notice('Skipping Modrinth upload because master has a newer commit.');
-              return;
-            }
-
-            // Commit-based versions stay stable across retries and moving dev-build tags.
-            const version = `dev-${context.sha.slice(0, 12)}`;
-            const response = await fetch(
-              `https://api.modrinth.com/v2/project/${encodeURIComponent(project)}/version/${version}`,
-              {
-                headers: {
-                  'User-Agent': 'intave/intave GitHub Actions (https://github.com/intave/intave)',
-                  Authorization: process.env.MODRINTH_TOKEN,
-                },
-                signal: AbortSignal.timeout(30000),
-              },
-            );
-            if (response.ok) {
-              core.notice(`Modrinth already contains ${version}; skipping upload.`);
-              return;
-            }
-            if (response.status !== 404) {
-              throw new Error(`Modrinth version lookup failed: HTTP ${response.status}`);
-            }
-
-            const url = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}`;
-            const { execFileSync } = require('node:child_process');
-            const subject = execFileSync('git', ['log', '-1', '--format=%s'], { encoding: 'utf8' }).trim();
-            core.setOutput('version', version);
-            core.setOutput('changelog', [
-              `Development build from [${context.sha.slice(0, 7)}](${url}/commit/${context.sha}).`,
-              '',
-              subject,
-              '',
-              `[Build details](${url}/actions/runs/${context.runId})`,
-              '',
-              'Install one build: Intave.jar downloads and caches libraries; Intave-bundled.jar includes libraries and all supported classloader natives.',
-            ].join('\n'));
-            core.setOutput('publish', 'true');
-
-      - name: Publish Dev Build to Modrinth
+      - name: Publish to Modrinth
         if: steps.modrinth.outputs.publish == 'true'
         uses: Kir-Antipov/mc-publish@52307b03863581dec6b652b83e597aec02ebb075 # v3.3
         with:
           modrinth-id: ${{ vars.MODRINTH_ID || secrets.MODRINTH_ID }}
           modrinth-token: ${{ secrets.MODRINTH_TOKEN }}
-          modrinth-featured: false
+          modrinth-featured: ${{ steps.modrinth.outputs.featured }}
           modrinth-unfeature-mode: none
           files: |
             build/libs/Intave.jar
             build/libs/Intave-bundled.jar
           name: Intave ${{ steps.modrinth.outputs.version }}
           version: ${{ steps.modrinth.outputs.version }}
-          version-type: alpha
+          version-type: ${{ steps.modrinth.outputs.version_type }}
           changelog: ${{ steps.modrinth.outputs.changelog }}
           environment: server
           loaders: |
@@ -202,3 +208,16 @@ jobs:
             purpur
             folia
           game-versions: '>=1.8 <=26.3'
+
+      - name: Publish to Hangar
+        # Attempt Hangar even if Modrinth failed, but only after a successful GitHub release.
+        if: >-
+          !cancelled() && github.repository == 'intave/intave' &&
+          (steps.approved_release.outcome == 'success' || steps.dev_release.outcome == 'success')
+        uses: actions/github-script@v8
+        env:
+          HANGAR_API_TOKEN: ${{ secrets.HANGAR_API_TOKEN }}
+        with:
+          script: |
+            const publish = require('./.github/scripts/publish-hangar.cjs');
+            await publish({ core, context, github });
