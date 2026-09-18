@@ -402,6 +402,12 @@ public final class ProtocolMetadata {
     return protocolVersion < VER_26_3 && MinecraftVersions.VER26_3.below();
   }
 
+  public boolean sendsPlacementSwingPackets() {
+    // 26.3 predicts the placement animation locally, without ServerboundSwingPacket.
+    // The server must also expose that packet for this signal to be observable.
+    return protocolVersion < VER_26_3 && MinecraftVersions.VER26_3.below();
+  }
+
   public void setLocale(String locale) {
     this.locale = locale;
   }

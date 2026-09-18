@@ -1,5 +1,21 @@
 package de.jpx3.intave.packet.reader;
 
+import com.comphenix.protocol.ProtocolLibrary;
+import de.jpx3.intave.IntavePlugin;
+import de.jpx3.intave.block.cache.BlockCache;
+import de.jpx3.intave.block.cache.BlockCaches;
+import de.jpx3.intave.check.world.InteractionRaytrace;
+import de.jpx3.intave.check.world.interaction.Interaction;
+import de.jpx3.intave.check.world.interaction.InteractionType;
+import de.jpx3.intave.module.feedback.EmptyFeedbackCallback;
+import de.jpx3.intave.module.linker.packet.ForwardingPacketAdapter;
+import de.jpx3.intave.test.FakePlayerFactory;
+import de.jpx3.intave.user.User;
+import de.jpx3.intave.user.UserFactory;
+import de.jpx3.intave.user.UserRepository;
+import org.bukkit.Bukkit;
+import java.util.ArrayList;
+
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.wrappers.EnumWrappers;
@@ -37,6 +53,101 @@ public final class ReaderTests extends IntegrationTests {
 
   public ReaderTests() {
     super("PR");
+  }
+
+  @Test(testCode = "block-ack-routing", severity = Severity.ERROR)
+  public void testNativeBlockAcknowledgementRouting() throws ReflectiveOperationException {
+    if (MinecraftVersions.VER26_2.below()) return;
+    Object handle = Class.forName("net.minecraft.network.protocol.game.ClientboundBlockChangedAckPacket")
+      .getConstructor(int.class).newInstance(37);
+    PacketContainer packet = PacketContainer.fromPacket(handle);
+    try (BlockChangedAckReader reader = PacketReaders.readerOf(packet)) {
+      assertEquals(37, reader.sequenceNumber());
+    }
+    if (!PacketType.fromName("BLOCK_CHANGED_ACK").contains(packet.getType())) {
+      fail("Native block acknowledgement resolves to " + packet.getType()
+        + " instead of a registered BLOCK_CHANGED_ACK subscription type");
+    }
+
+    org.bukkit.World world = Bukkit.getWorlds().get(0);
+    org.bukkit.entity.Player player = FakePlayerFactory.createPlayer((name, args) ->
+      name.equals("getWorld") ? world : null);
+    BlockCache cache = BlockCaches.cacheForPlayerWithResolver(player, null);
+    List<EmptyFeedbackCallback> feedback = new ArrayList<>();
+    List<String> messages = new ArrayList<>();
+    User delegate = UserFactory.createTestUserFor(player, (ignored, key) -> {
+      if (key.equals("protocolVersion")) return ServerProtocolVersion.current();
+      if (key.equals("blockCache")) return cache;
+      if (key.equals("shouldIgnoreNextOutboundPacket")) return false;
+      return null;
+    });
+    User user = (User) java.lang.reflect.Proxy.newProxyInstance(User.class.getClassLoader(), new Class<?>[]{User.class},
+      (proxy, method, args) -> {
+        if (method.getName().equals("packetTickFeedback")) {
+          assertSame(packet, ((PacketEvent)args[0]).getPacket());
+          feedback.add((EmptyFeedbackCallback)args[1]);
+          return null;
+        }
+        if (method.getName().equals("receives")) return true;
+        if (method.getName().equals("sendMessage")) {
+          messages.add((String)args[0]);
+          return null;
+        }
+        return method.invoke(delegate, args);
+      });
+    UserRepository.manuallyRegisterUser(player, user);
+    try {
+      cache.setClientSpeculationValue(world, 0, 64, 0, Material.AIR, 0, 37);
+      Interaction placement = new Interaction(0, null, world, player, null, 1,
+        InteractionType.PLACE, Material.STONE, new ItemStack(Material.STONE),
+        EnumWrappers.Hand.MAIN_HAND, null, 0.5F, 1F, 0.5F, 37);
+      placement.setEmulated();
+      placement.markPlacementEmulated();
+      placement.setEmulationPosition(new BlockPosition(0, 64, 0));
+      InteractionRaytrace.InteractionMeta interactionMeta =
+        (InteractionRaytrace.InteractionMeta) user.checkMetadata(InteractionRaytrace.InteractionMeta.class);
+      interactionMeta.speculativeInteraction = placement;
+      InteractionRaytrace check = IntavePlugin.singletonInstance().checks().searchCheck(InteractionRaytrace.class);
+      // 26.2 sends a swing after successful placement. 26.3 proceeds without one.
+      if (MinecraftVersions.VER26_3.below()) {
+        check.receiveAnyTickContextPacket(PacketEvent.fromClient(this,
+          new PacketContainer(PacketType.Play.Client.ARM_ANIMATION), player));
+      }
+      check.receiveAnyTickContextPacket(PacketEvent.fromClient(this,
+        new PacketContainer(PacketType.Play.Client.PONG), player));
+      assertTrue(cache.isClientSpeculatingAt(0, 64, 0));
+      assertFalse(messages.stream().anyMatch(message -> message.contains("UNDO_PLACE")));
+      PacketEvent event = PacketEvent.fromServer(this, packet, player);
+      for (com.comphenix.protocol.events.PacketListener listener : ProtocolLibrary.getProtocolManager().getPacketListeners()) {
+        if (listener instanceof ForwardingPacketAdapter && listener.getSendingWhitelist().getTypes().contains(packet.getType())) {
+          listener.onPacketSending(event);
+        }
+      }
+      assertEquals(1, feedback.size());
+      assertTrue(cache.isClientSpeculatingAt(0, 64, 0));
+      feedback.get(0).success();
+      assertFalse(cache.isClientSpeculatingAt(0, 64, 0));
+      assertTrue(messages.stream().anyMatch(message -> message.contains("CL_SPEC_FIN_37")));
+
+      // Missing swings still cancel legacy predictions, but cannot cancel 26.3 placements.
+      cache.setClientSpeculationValue(world, 0, 64, 0, Material.AIR, 0, 38);
+      interactionMeta.speculativeInteraction = placement;
+      check.receiveAnyTickContextPacket(PacketEvent.fromClient(this,
+        new PacketContainer(PacketType.Play.Client.PONG), player));
+      assertEquals(MinecraftVersions.VER26_3.atOrAbove(), cache.isClientSpeculatingAt(0, 64, 0));
+
+      Interaction deferredPlacement = new Interaction(1, null, world, player, null, 1,
+        InteractionType.PLACE, Material.STONE, new ItemStack(Material.STONE),
+        EnumWrappers.Hand.MAIN_HAND, null, 0.5F, 1F, 0.5F, 39);
+      interactionMeta.speculativeInteraction = deferredPlacement;
+      check.receiveAnyTickContextPacket(PacketEvent.fromClient(this,
+        new PacketContainer(PacketType.Play.Client.PONG), player));
+      assertEquals(MinecraftVersions.VER26_3.atOrAbove() ? InteractionType.PLACE : InteractionType.INTERACT,
+        deferredPlacement.type());
+      assertTrue(interactionMeta.speculativeInteraction == null);
+    } finally {
+      UserRepository.unregisterUser(player);
+    }
   }
 
   @Test(testCode = "attachment-reader", severity = Severity.ERROR)

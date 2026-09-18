@@ -480,6 +480,11 @@ public final class InteractionRaytrace extends MetaCheck<InteractionRaytrace.Int
     if (interactionMeta.speculativeInteraction != null) {
       Interaction speculativeInteraction = interactionMeta.speculativeInteraction;
       interactionMeta.speculativeInteraction = null;
+      // Since 26.3, a successful placement no longer sends a separate swing.
+      // Leave its prediction for block updates and acknowledgement to reconcile.
+      if (!user.meta().protocol().sendsPlacementSwingPackets()) {
+        return;
+      }
       if (isAnimation) {
         if (IntaveControl.DEBUG_INTERACTION) {
           user.sendMessage(ChatColor.GREEN + "Speculative interaction succeeded, emulated: " + speculativeInteraction.hasBeenEmulated() + "/" + speculativeInteraction.wasPlacementEmulated());

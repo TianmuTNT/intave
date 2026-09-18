@@ -39,4 +39,22 @@ class ProtocolVersion263Test {
       MinecraftVersion.setCurrent(previous);
     }
   }
+
+  @Test
+  void placementConfirmationRequiresAnObservableSwingPacket() {
+    MinecraftVersion previous = MinecraftVersion.current();
+    try {
+      MinecraftVersion.setCurrent(MinecraftVersions.VER26_2);
+      ProtocolMetadata protocol = new ProtocolMetadata(null, 776);
+      assertTrue(protocol.sendsPlacementSwingPackets());
+      protocol.setProtocolVersion(777);
+      assertFalse(protocol.sendsPlacementSwingPackets());
+      MinecraftVersion.setCurrent(MinecraftVersions.VER26_3);
+      assertFalse(protocol.sendsPlacementSwingPackets());
+      protocol.setProtocolVersion(776);
+      assertFalse(protocol.sendsPlacementSwingPackets());
+    } finally {
+      MinecraftVersion.setCurrent(previous);
+    }
+  }
 }

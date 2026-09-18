@@ -18,6 +18,7 @@ import com.comphenix.protocol.wrappers.BlockPosition;
 import com.comphenix.protocol.wrappers.ChunkCoordIntPair;
 import com.comphenix.protocol.wrappers.EnumWrappers;
 import com.comphenix.protocol.wrappers.WrappedBlockData;
+import de.jpx3.intave.IntaveControl;
 import de.jpx3.intave.block.cache.BlockCache;
 import de.jpx3.intave.block.variant.BlockVariantNativeAccess;
 import de.jpx3.intave.check.movement.physics.environment.SimulationEnvironment;
@@ -31,6 +32,7 @@ import de.jpx3.intave.module.linker.packet.PacketSubscription;
 import de.jpx3.intave.packet.reader.*;
 import de.jpx3.intave.share.Position;
 import de.jpx3.intave.user.User;
+import de.jpx3.intave.user.MessageChannel;
 import de.jpx3.intave.user.UserRepository;
 import de.jpx3.intave.user.meta.ConnectionMetadata;
 import org.bukkit.Location;
@@ -214,9 +216,7 @@ public final class BlockUpdateTracker extends Module {
         int positionX = blockPosition.getX();
         int positionY = blockPosition.getY();
         int positionZ = blockPosition.getZ();
-        if (speculativeBlocks && blockCache.isClientSpeculatingAt(positionX, positionY, positionZ)) {
-          blockCache.setClientSpeculationValue(world, positionX, positionY, positionZ, material, variant, user.meta().inventory().lastBlockSequenceNumber);
-        } else {
+        if (!speculativeBlocks || !blockCache.updateClientSpeculationValue(world, positionX, positionY, positionZ, material, variant)) {
           blockCache.unlockOverride(positionX, positionY, positionZ);
           blockCache.override(world, positionX, positionY, positionZ, material, variant, "UPDATE");
           blockCache.invalidateCacheAround(positionX, positionY, positionZ);
@@ -238,13 +238,19 @@ public final class BlockUpdateTracker extends Module {
       BLOCK_CHANGED_ACK
     }
   )
-  public void blockChangedAck(PacketEvent event) {
-    Player player = event.getPlayer();
-    User user = UserRepository.userOf(player);
-    int sequenceNumber = event.getPacket().getIntegers().read(0);
-    user.packetTickFeedback(event, () ->
-      user.blockCache().moveClientSpeculationsToOverride(player.getWorld(), sequenceNumber)
-    );
+  public void blockChangedAck(User user, PacketEvent event, BlockChangedAckReader reader) {
+    int sequenceNumber = reader.sequenceNumber();
+    debugBlockAck(user, "BLOCK_ACK_SENT", sequenceNumber);
+    user.packetTickFeedback(event, () -> {
+      debugBlockAck(user, "BLOCK_ACK_CONFIRMED", sequenceNumber);
+      user.blockCache().moveClientSpeculationsToOverride(user.player().getWorld(), sequenceNumber);
+    });
+  }
+
+  private static void debugBlockAck(User user, String phase, int sequenceNumber) {
+    if (IntaveControl.BLOCK_CACHE_DEBUG || user.receives(MessageChannel.DEBUG_BLOCK_CACHE)) {
+      user.sendMessage(phase + " sequence=" + sequenceNumber);
+    }
   }
 
   private static boolean inDistance(Collection<? extends BlockPosition> blockPositions, Location playerLocation, int requiredDistance) {

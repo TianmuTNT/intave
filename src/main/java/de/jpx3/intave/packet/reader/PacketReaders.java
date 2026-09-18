@@ -34,6 +34,7 @@ public final class PacketReaders {
     setup(ATTACH_ENTITY, AttachEntityReader::new);
     setup(BLOCK_ACTION, BlockActionReader::new);
     setup(BLOCK_CHANGE, SingleBlockChangeReader::new);
+    setup(BLOCK_CHANGED_ACK, BlockChangedAckReader::new);
     setup(BLOCK_BREAK, SingleBlockChangeReader::new);
     setup(BLOCK_BREAK_ANIMATION, EntityReader::new);
     setup(CAMERA, EntityReader::new);
