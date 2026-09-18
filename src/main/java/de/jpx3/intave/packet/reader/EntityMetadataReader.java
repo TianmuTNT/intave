@@ -27,6 +27,10 @@ public final class EntityMetadataReader extends EntityReader {
   private static final boolean LEGACY_MODE = !MinecraftVersions.VER1_19_3.atOrAbove();
 
   public Optional<BlockPosition> bedPosition() {
+    // on versions below 1.14 the bed position is not stored in metadata, it arrives in a separate use_bed packet
+    if (!MinecraftVersions.VER1_14_0.atOrAbove()) {
+      return Optional.empty();
+    }
     int index;
     if (MinecraftVersions.VER1_17_0.atOrAbove()) {
       index = 14;
@@ -36,12 +40,16 @@ public final class EntityMetadataReader extends EntityReader {
       index = 12;
     }
     try {
-      //noinspection unchecked
-      Optional<Object> rawObject = (Optional<Object>) fetchRaw(index);
+      Object raw = fetchRaw(index);
       //noinspection OptionalAssignedToNull
-      if (rawObject == null) {
+      if (raw == null) {
         return Optional.empty();
       }
+      // the value type depends on the server version, so check that it is an optional before casting
+      if (!(raw instanceof Optional)) {
+        return Optional.empty();
+      }
+      Optional<?> rawObject = (Optional<?>) raw;
       return rawObject.map(o -> BlockPosition.fromNative(o).toBlockPosition());
     } catch (Exception e) {
       System.err.println("Failed to read bed position from entity metadata, returning empty");
