@@ -201,5 +201,4 @@ jobs:
             paper
             purpur
             folia
-          # Keep the upper bound in sync with the supported server versions in build.gradle.kts.
-          game-versions: '>=1.8 <=26.2'
+          game-versions: '>=1.8 <=26.3'
