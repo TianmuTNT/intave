@@ -12,7 +12,6 @@
 package de.jpx3.intave.check.world.placementanalysis;
 
 import com.comphenix.protocol.events.PacketEvent;
-import de.jpx3.intave.IntavePlugin;
 import de.jpx3.intave.check.PlayerCheckPart;
 import de.jpx3.intave.check.movement.physics.environment.SimulationEnvironment;
 import de.jpx3.intave.check.world.PlacementAnalysis;
@@ -27,7 +26,6 @@ import static de.jpx3.intave.module.linker.packet.PacketId.Client.LOOK;
 import static de.jpx3.intave.module.linker.packet.PacketId.Client.POSITION_LOOK;
 
 public final class RoundedRotation extends PlayerCheckPart<PlacementAnalysis> {
-	private final IntavePlugin plugin = IntavePlugin.singletonInstance();
 	private final static int MIN_ACTIVATION_DATA = 100;
 	private int indexNotBuilding;
 	private final int[] zerosNotBuilding = new int[60];
@@ -80,7 +78,7 @@ public final class RoundedRotation extends PlayerCheckPart<PlacementAnalysis> {
 	}
 
 	private void sendDebug(String message) {
-		for (Player debugReceiver : MessageChannelSubscriptions.sibylReceivers()) {
+		for (Player debugReceiver : MessageChannelSubscriptions.debugReceivers()) {
 			UserRepository.userOf(debugReceiver).sendMessage(message);
 		}
 	}

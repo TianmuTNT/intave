@@ -40,7 +40,6 @@ import de.jpx3.intave.command.CommandForwarder;
 import de.jpx3.intave.config.ConfigurationService;
 import de.jpx3.intave.connect.IntaveDomains;
 import de.jpx3.intave.connect.customclient.CustomClientSupportService;
-import de.jpx3.intave.connect.sibyl.SibylIntegrationService;
 import de.jpx3.intave.diagnostic.ConsoleOutput;
 import de.jpx3.intave.entity.EntityLookup;
 import de.jpx3.intave.entity.size.HitboxSizeAccess;
@@ -117,7 +116,6 @@ public final class IntavePlugin extends JavaPlugin {
   private IntaveLogger logger;
   private Cloud cloud;
 
-  private SibylIntegrationService sibylIntegrationService;
   private FakePlayerEventService fakePlayerEventService; // module candidate
   private ConfigurationService configService;
   private CheckService checkService;
@@ -325,7 +323,8 @@ public final class IntavePlugin extends JavaPlugin {
       customClientSupportService.setup();
       checkService = new CheckService(this);
       fakePlayerEventService = new FakePlayerEventService(this);
-      sibylIntegrationService = new SibylIntegrationService(this);
+      // i gotta hit 1200 elo on faceit, btw bejiihiu xs (jgdi) was here
+      // https://t.me/devfolia/2117
       integrationTestService = new IntegrationTestService();
       integrationTestService.setup();
 
@@ -709,10 +708,6 @@ public final class IntavePlugin extends JavaPlugin {
   @Deprecated
   public BukkitEventSubscriptionLinker eventLinker() {
     return Modules.linker().bukkitEvents();
-  }
-
-  public SibylIntegrationService sibyl() {
-    return sibylIntegrationService;
   }
 
   public IntaveVersionList versions() {

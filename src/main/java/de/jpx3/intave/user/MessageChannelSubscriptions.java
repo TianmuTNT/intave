@@ -13,20 +13,20 @@ public final class MessageChannelSubscriptions {
    * We are mainly iterating over players, so a List makes more sense than a Set or Map.
    */
 
-  private static final Collection<Player> sibylRepo = GarbageCollector.watch(new CopyOnWriteArrayList<>());
+  private static final Collection<Player> debugRepo = GarbageCollector.watch(new CopyOnWriteArrayList<>());
 
-  public static Collection<Player> sibylReceivers() {
-    return sibylRepo;
+  public static Collection<Player> debugReceivers() {
+    return debugRepo;
   }
 
-  public static void setSibyl(Player player, boolean sibyl) {
-    Collection<Player> sibylReceiver = sibylReceivers();
-    if (sibyl) {
-      if (!sibylReceiver.contains(player)) {
-        sibylReceiver.add(player);
+  public static void setDebugReceiver(Player player, boolean subscribed) {
+    Collection<Player> receivers = debugReceivers();
+    if (subscribed) {
+      if (!receivers.contains(player)) {
+        receivers.add(player);
       }
     } else {
-      sibylReceiver.remove(player);
+      receivers.remove(player);
     }
   }
 

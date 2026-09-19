@@ -361,7 +361,7 @@ public final class CombatMitigator extends Module {
       }
     }
 
-    for (Player debugReceiver : MessageChannelSubscriptions.sibylReceivers()) {
+    for (Player debugReceiver : MessageChannelSubscriptions.debugReceivers()) {
       UserRepository.userOf(debugReceiver).sendMessage(message);
     }
   }

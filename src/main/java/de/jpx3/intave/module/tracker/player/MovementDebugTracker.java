@@ -1,7 +1,7 @@
 package de.jpx3.intave.module.tracker.player;
 
 import com.comphenix.protocol.events.PacketContainer;
-import de.jpx3.intave.connect.sibyl.LabyModChannelHelper;
+import de.jpx3.intave.connect.customclient.LabyModChannelHelper;
 import de.jpx3.intave.module.Module;
 import de.jpx3.intave.module.linker.packet.PacketSubscription;
 import de.jpx3.intave.packet.reader.PacketReaders;

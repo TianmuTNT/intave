@@ -21,7 +21,7 @@ public final class DebugBroadcast {
   }
 
   public static boolean anyoneListeningTo(MessageCategory category, Player constraint) {
-    Collection<Player> players = MessageChannelSubscriptions.sibylReceivers();
+    Collection<Player> players = MessageChannelSubscriptions.debugReceivers();
     if (players.isEmpty()) {
       return false;
     }
@@ -35,7 +35,7 @@ public final class DebugBroadcast {
   }
 
   public static void broadcast(Player target, MessageCategory category, MessageSeverity severity, String fullMessage, String shortMessage) {
-    Collection<Player> receivers = MessageChannelSubscriptions.sibylReceivers();
+    Collection<Player> receivers = MessageChannelSubscriptions.debugReceivers();
     if (receivers.isEmpty()) {
       return;
     }
