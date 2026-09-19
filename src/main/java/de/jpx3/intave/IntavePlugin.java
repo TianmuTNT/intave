@@ -323,8 +323,6 @@ public final class IntavePlugin extends JavaPlugin {
       customClientSupportService.setup();
       checkService = new CheckService(this);
       fakePlayerEventService = new FakePlayerEventService(this);
-      // i gotta hit 1200 elo on faceit, btw bejiihiu xs (jgdi) was here
-      // https://t.me/devfolia/2117
       integrationTestService = new IntegrationTestService();
       integrationTestService.setup();
 
