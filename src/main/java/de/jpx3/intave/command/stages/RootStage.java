@@ -117,35 +117,33 @@ public final class RootStage extends CommandStage {
     String fullSpecifier = specifier != null ? Arrays.stream(specifier).map(s -> s + " ").collect(Collectors.joining()).trim().toLowerCase(Locale.ROOT) : "";
 
     Player player = user.player();
-    if (plugin.sibyl().authentication().isAuthenticated(player)) {
-      user.sendMessage(ChatColor.RED + "Loading timings...");
-      List<Timing> timings = new ArrayList<>(Timings.timingPool());
-      timings.sort(Timing::compareTo);
+    user.sendMessage(ChatColor.RED + "Loading timings...");
+    List<Timing> timings = new ArrayList<>(Timings.timingPool());
+    timings.sort(Timing::compareTo);
 
-      timings.forEach(timing -> {
-        if (timing.isPacketEventTiming() || timing.isBukkitEventTiming()) {
-          return;
-        }
-        boolean suspicious = timing.averageCallDurationInMillis() > 0.5d;
-        boolean dumping = timing.averageCallDurationInMillis() > 1.5d;
-        String message;
-        ChatColor outputColor = suspicious ? (dumping ? ChatColor.RED : ChatColor.YELLOW) : ChatColor.GREEN;
-        message = String.format(
-          "%s: %s::%s%s (%s&f %s/c, p99 %sns)",
-          timing.coloredName(),
-          timing.recordedCalls(),
-          formatDouble(timing.totalDurationMillis() / 1000d, 2),
-          "s",
-          outputColor + "" + largeNumberFormat((long) timing.averageCallDurationInNanos()),
-          "ns",
-          largeNumberFormat(timing.p99CallDurationInNanos())
-        );
-        if (!fullSpecifier.isEmpty() && !"ns".equals(fullSpecifier) && !timing.name().toLowerCase(Locale.ROOT).contains(fullSpecifier)) {
-          message = IntavePlugin.defaultColor() + ChatColor.stripColor(message);
-        }
-        TimingChatOutput.sendSelectableTiming(player, timing, message, "/intave root histogram ");
-      });
-    }
+    timings.forEach(timing -> {
+      if (timing.isPacketEventTiming() || timing.isBukkitEventTiming()) {
+        return;
+      }
+      boolean suspicious = timing.averageCallDurationInMillis() > 0.5d;
+      boolean dumping = timing.averageCallDurationInMillis() > 1.5d;
+      String message;
+      ChatColor outputColor = suspicious ? (dumping ? ChatColor.RED : ChatColor.YELLOW) : ChatColor.GREEN;
+      message = String.format(
+        "%s: %s::%s%s (%s&f %s/c, p99 %sns)",
+        timing.coloredName(),
+        timing.recordedCalls(),
+        formatDouble(timing.totalDurationMillis() / 1000d, 2),
+        "s",
+        outputColor + "" + largeNumberFormat((long) timing.averageCallDurationInNanos()),
+        "ns",
+        largeNumberFormat(timing.p99CallDurationInNanos())
+      );
+      if (!fullSpecifier.isEmpty() && !"ns".equals(fullSpecifier) && !timing.name().toLowerCase(Locale.ROOT).contains(fullSpecifier)) {
+        message = IntavePlugin.defaultColor() + ChatColor.stripColor(message);
+      }
+      TimingChatOutput.sendSelectableTiming(player, timing, message, "/intave root histogram ");
+    });
   }
 
   @SubCommand(
@@ -158,32 +156,30 @@ public final class RootStage extends CommandStage {
     String fullSpecifier = specifier != null ? Arrays.stream(specifier).map(s -> s + " ").collect(Collectors.joining()).trim().toLowerCase(Locale.ROOT) : "";
 
     Player player = user.player();
-    if (plugin.sibyl().authentication().isAuthenticated(player)) {
-      user.sendMessage(ChatColor.RED + "Loading timings...");
+    user.sendMessage(ChatColor.RED + "Loading timings...");
 
-      List<Timing> timings = new ArrayList<>(Timings.timingPool());
-      timings.sort(Timing::compareTo);
+    List<Timing> timings = new ArrayList<>(Timings.timingPool());
+    timings.sort(Timing::compareTo);
 
-      timings.forEach(timing -> {
-        if (!timing.isBukkitEventTiming()) return;
-        boolean suspicious = timing.averageCallDurationInMillis() > 0.5d;
-        boolean dumping = timing.averageCallDurationInMillis() > 1.5d;
-        String message = String.format(
-          "%s: %s::%sms (%s ms/c, p99 %sms)",
-          timing.coloredName(),
-          timing.recordedCalls(),
-          formatDouble(timing.totalDurationMillis(), 4),
-          (suspicious ? (dumping ? ChatColor.RED : ChatColor.YELLOW) : ChatColor.GREEN) + "" +
-            formatDouble(timing.averageCallDurationInMillis(), 8)
-            + ChatColor.WHITE,
-          formatDouble(timing.p99CallDurationInMillis(), 8)
-        );
-        if (!fullSpecifier.isEmpty() && !timing.name().toLowerCase(Locale.ROOT).contains(fullSpecifier)) {
-          message = IntavePlugin.defaultColor() + ChatColor.stripColor(message);
-        }
-        TimingChatOutput.sendSelectableTiming(player, timing, message, "/intave root histogram ");
-      });
-    }
+    timings.forEach(timing -> {
+      if (!timing.isBukkitEventTiming()) return;
+      boolean suspicious = timing.averageCallDurationInMillis() > 0.5d;
+      boolean dumping = timing.averageCallDurationInMillis() > 1.5d;
+      String message = String.format(
+        "%s: %s::%sms (%s ms/c, p99 %sms)",
+        timing.coloredName(),
+        timing.recordedCalls(),
+        formatDouble(timing.totalDurationMillis(), 4),
+        (suspicious ? (dumping ? ChatColor.RED : ChatColor.YELLOW) : ChatColor.GREEN) + "" +
+          formatDouble(timing.averageCallDurationInMillis(), 8)
+          + ChatColor.WHITE,
+        formatDouble(timing.p99CallDurationInMillis(), 8)
+      );
+      if (!fullSpecifier.isEmpty() && !timing.name().toLowerCase(Locale.ROOT).contains(fullSpecifier)) {
+        message = IntavePlugin.defaultColor() + ChatColor.stripColor(message);
+      }
+      TimingChatOutput.sendSelectableTiming(player, timing, message, "/intave root histogram ");
+    });
   }
 
   @SubCommand(
@@ -204,10 +200,7 @@ public final class RootStage extends CommandStage {
     permission = "sibyl"
   )
   public void hashCommand(User user) {
-    Player player = user.player();
-    if (plugin.sibyl().authentication().isAuthenticated(player)) {
-      user.sendMessage(ChatColor.GRAY + "Hash is " + ChatColor.COLOR_CHAR + JAR_HASH);
-    }
+    user.sendMessage(ChatColor.GRAY + "Hash is " + ChatColor.COLOR_CHAR + JAR_HASH);
   }
 
   @SubCommand(
@@ -232,31 +225,29 @@ public final class RootStage extends CommandStage {
     String fullSpecifier = specifier != null ? Arrays.stream(specifier).map(s -> s + " ").collect(Collectors.joining()).trim().toLowerCase(Locale.ROOT) : "";
 
     Player player = user.player();
-    if (plugin.sibyl().authentication().isAuthenticated(player)) {
-      user.sendMessage(ChatColor.RED + "Loading timings...");
+    user.sendMessage(ChatColor.RED + "Loading timings...");
 
-      List<Timing> timings = new ArrayList<>(Timings.timingPool());
-      timings.sort(Timing::compareTo);
+    List<Timing> timings = new ArrayList<>(Timings.timingPool());
+    timings.sort(Timing::compareTo);
 
-      timings.forEach(timing -> {
-        if (!timing.isPacketEventTiming()) return;
-        boolean suspicious = timing.averageCallDurationInMillis() > 0.5d;
-        boolean dumping = timing.averageCallDurationInMillis() > 1.5d;
-        String message = String.format(
-          "%s: %s::%sms (%s&f ms/c, p99 %sms)",
-          timing.coloredName(),
-          timing.recordedCalls(),
-          formatDouble(timing.totalDurationMillis(), 4),
-          (suspicious ? (dumping ? ChatColor.RED : ChatColor.YELLOW) : ChatColor.GREEN) + "" +
-            formatDouble(timing.averageCallDurationInMillis(), 8),
-          formatDouble(timing.p99CallDurationInMillis(), 8)
-        );
-        if (!fullSpecifier.isEmpty() && !timing.name().toLowerCase(Locale.ROOT).contains(fullSpecifier)) {
-          message = IntavePlugin.defaultColor() + ChatColor.stripColor(message);
-        }
-        TimingChatOutput.sendSelectableTiming(player, timing, message, "/intave root histogram ");
-      });
-    }
+    timings.forEach(timing -> {
+      if (!timing.isPacketEventTiming()) return;
+      boolean suspicious = timing.averageCallDurationInMillis() > 0.5d;
+      boolean dumping = timing.averageCallDurationInMillis() > 1.5d;
+      String message = String.format(
+        "%s: %s::%sms (%s&f ms/c, p99 %sms)",
+        timing.coloredName(),
+        timing.recordedCalls(),
+        formatDouble(timing.totalDurationMillis(), 4),
+        (suspicious ? (dumping ? ChatColor.RED : ChatColor.YELLOW) : ChatColor.GREEN) + "" +
+          formatDouble(timing.averageCallDurationInMillis(), 8),
+        formatDouble(timing.p99CallDurationInMillis(), 8)
+      );
+      if (!fullSpecifier.isEmpty() && !timing.name().toLowerCase(Locale.ROOT).contains(fullSpecifier)) {
+        message = IntavePlugin.defaultColor() + ChatColor.stripColor(message);
+      }
+      TimingChatOutput.sendSelectableTiming(player, timing, message, "/intave root histogram ");
+    });
   }
 
   @SubCommand(

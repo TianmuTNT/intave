@@ -12,11 +12,9 @@
 package de.jpx3.intave.check.world.placementanalysis;
 
 import com.comphenix.protocol.events.PacketEvent;
-import de.jpx3.intave.IntavePlugin;
 import de.jpx3.intave.check.PlayerCheckPart;
 import de.jpx3.intave.check.movement.physics.environment.SimulationEnvironment;
 import de.jpx3.intave.check.world.PlacementAnalysis;
-import de.jpx3.intave.connect.sibyl.SibylMessageTransmitter;
 import de.jpx3.intave.module.linker.packet.PacketSubscription;
 import de.jpx3.intave.user.MessageChannelSubscriptions;
 import de.jpx3.intave.user.User;
@@ -28,7 +26,6 @@ import static de.jpx3.intave.module.linker.packet.PacketId.Client.LOOK;
 import static de.jpx3.intave.module.linker.packet.PacketId.Client.POSITION_LOOK;
 
 public final class RoundedRotation extends PlayerCheckPart<PlacementAnalysis> {
-	private final IntavePlugin plugin = IntavePlugin.singletonInstance();
 	private final static int MIN_ACTIVATION_DATA = 100;
 	private int indexNotBuilding;
 	private final int[] zerosNotBuilding = new int[60];
@@ -81,10 +78,8 @@ public final class RoundedRotation extends PlayerCheckPart<PlacementAnalysis> {
 	}
 
 	private void sendDebug(String message) {
-		for (Player authenticatedPlayer : MessageChannelSubscriptions.sibylReceivers()) {
-			if (plugin.sibyl().isAuthenticated(authenticatedPlayer)) {
-				SibylMessageTransmitter.sendMessage(authenticatedPlayer, message);
-			}
+		for (Player debugReceiver : MessageChannelSubscriptions.debugReceivers()) {
+			UserRepository.userOf(debugReceiver).sendMessage(message);
 		}
 	}
 

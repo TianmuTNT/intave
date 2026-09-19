@@ -91,15 +91,9 @@ public final class CommandExecutor {
     String prefix = IntavePlugin.prefix();
     String[] args = executedCommand.split(" ");
     if ("sibyl".equalsIgnoreCase(permission)) {
-      if (sender instanceof Player) {
-        if (!IntavePlugin.singletonInstance().sibyl().isAuthenticated(((Player) sender).getPlayer())) {
-          sender.sendMessage(NO_PERMISSION_MESSAGE);
-          return null;
-        }
-      } else {
-        sender.sendMessage(NO_PERMISSION_MESSAGE);
-        return null;
-      }
+      // sibyl is deprecated and removed, those commands stay hidden
+      sender.sendMessage(NO_PERMISSION_MESSAGE);
+      return null;
     } else if (sender instanceof Player && !"none".equals(permission) && !"sibyl".equalsIgnoreCase(permission) && !BukkitPermissionCheck.permissionCheck(sender, permission)) {
       sender.sendMessage(NO_PERMISSION_MESSAGE);
       return null;

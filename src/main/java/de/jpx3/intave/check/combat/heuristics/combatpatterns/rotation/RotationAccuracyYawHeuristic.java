@@ -16,7 +16,6 @@ import com.google.common.collect.Lists;
 import de.jpx3.intave.check.combat.Heuristics;
 import de.jpx3.intave.check.combat.heuristics.ClassicHeuristic;
 import de.jpx3.intave.check.combat.heuristics.HeuristicsClassicType;
-import de.jpx3.intave.connect.sibyl.SibylCensor;
 import de.jpx3.intave.math.Hypot;
 import de.jpx3.intave.math.MathHelper;
 import de.jpx3.intave.module.linker.packet.ListenerPriority;
@@ -204,7 +203,7 @@ public final class RotationAccuracyYawHeuristic extends ClassicHeuristic<Rotatio
       double averageRatio = yawAverage / averageOf(angleData);
       double maxRatio = maxDistanceToPerfectYaw / yawAverage;
       if (maxRatio < 2 && maxDistanceToPerfectYaw < 30) {
-        String details = SibylCensor.thisPlease(
+        String details = String.format(
           "ratio: %s, maximum distance: %s",
           MathHelper.formatDouble(maxRatio, 4),
           MathHelper.formatDouble(maxDistanceToPerfectYaw, 4)

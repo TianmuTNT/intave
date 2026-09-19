@@ -1,4 +1,4 @@
-package de.jpx3.intave.connect.sibyl;
+package de.jpx3.intave.connect.customclient;
 
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
