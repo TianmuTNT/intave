@@ -1,13 +1,10 @@
 package de.jpx3.intave.diagnostic.message;
 
-import de.jpx3.intave.IntavePlugin;
-import de.jpx3.intave.connect.sibyl.SibylIntegrationService;
 import de.jpx3.intave.executor.Synchronizer;
 import de.jpx3.intave.user.MessageChannelSubscriptions;
 import de.jpx3.intave.user.User;
 import de.jpx3.intave.user.UserRepository;
 import org.bukkit.Bukkit;
-import org.bukkit.ChatColor;
 import org.bukkit.entity.Player;
 
 import java.util.Collection;
@@ -46,23 +43,15 @@ public final class DebugBroadcast {
       Synchronizer.synchronize(() -> broadcast(target, category, severity, fullMessage, shortMessage));
       return;
     }
-    SibylIntegrationService sibyl = IntavePlugin.singletonInstance().sibyl();
     for (Player receiver : receivers) {
-      if (sibyl.isAuthenticated(receiver)) {
-        // Use new sibyl if encryption available otherwise use fallback method
-        if (sibyl.encryptionActiveFor(receiver)) {
-          sibyl.publishDebug(receiver, category.ordinal(), fullMessage, shortMessage);
-        } else {
-          OutputConfiguration configuration = configurationOf(receiver.getUniqueId());
-          if (configuration.canOutput(category, target) && !severity.isLowerThan(configuration.minimumSeverity())) {
-            String color = configuration.colorOf(category).toString();
-            String prefix = configuration.prefixSelector().formatPrefix(severity, category.name());
-            String theMessage = configuration.detailOf(category).select(fullMessage, shortMessage);
-            String completeMessage = ChatColor.RED + "(insecure) " + color + prefix + " " + theMessage;
-            User receiverUser = UserRepository.userOf(receiver);
-            receiverUser.sendMessage(completeMessage);
-          }
-        }
+      OutputConfiguration configuration = configurationOf(receiver.getUniqueId());
+      if (configuration.canOutput(category, target) && !severity.isLowerThan(configuration.minimumSeverity())) {
+        String color = configuration.colorOf(category).toString();
+        String prefix = configuration.prefixSelector().formatPrefix(severity, category.name());
+        String theMessage = configuration.detailOf(category).select(fullMessage, shortMessage);
+        String completeMessage = color + prefix + " " + theMessage;
+        User receiverUser = UserRepository.userOf(receiver);
+        receiverUser.sendMessage(completeMessage);
       }
     }
   }

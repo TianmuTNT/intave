@@ -14,7 +14,6 @@ package de.jpx3.intave.module.mitigate;
 import com.comphenix.protocol.events.PacketEvent;
 import de.jpx3.intave.IntaveControl;
 import de.jpx3.intave.IntavePlugin;
-import de.jpx3.intave.connect.sibyl.SibylMessageTransmitter;
 import de.jpx3.intave.executor.Synchronizer;
 import de.jpx3.intave.math.MathHelper;
 import de.jpx3.intave.module.Module;
@@ -322,8 +321,6 @@ public final class CombatMitigator extends Module {
   }
 
   private static void notify(User user, AttackNerfer attackNerfer, String checkId, boolean hide) {
-    IntavePlugin plugin = IntavePlugin.singletonInstance();
-
     if (!attackNerfer.active()) {
       return;
     }
@@ -348,7 +345,7 @@ public final class CombatMitigator extends Module {
 
     String message = ChatColor.RED + "[CM] Applied " + attackNerfer.name() + " combat nerfer on " + player.getName() + " (dmc" + checkId + ") " + durationText;
 
-    if (IntaveControl.DEBUG_HEURISTICS && !plugin.sibyl().isAuthenticated(player)) {
+    if (IntaveControl.DEBUG_HEURISTICS) {
       user.sendMessage(message);
     }
 
@@ -364,10 +361,8 @@ public final class CombatMitigator extends Module {
       }
     }
 
-    for (Player authenticatedPlayer : MessageChannelSubscriptions.sibylReceivers()) {
-      if (plugin.sibyl().isAuthenticated(authenticatedPlayer)) {
-        SibylMessageTransmitter.sendMessage(authenticatedPlayer, message);
-      }
+    for (Player debugReceiver : MessageChannelSubscriptions.sibylReceivers()) {
+      UserRepository.userOf(debugReceiver).sendMessage(message);
     }
   }
 }

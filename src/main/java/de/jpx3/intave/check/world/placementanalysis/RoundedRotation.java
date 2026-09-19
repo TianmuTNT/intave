@@ -16,7 +16,6 @@ import de.jpx3.intave.IntavePlugin;
 import de.jpx3.intave.check.PlayerCheckPart;
 import de.jpx3.intave.check.movement.physics.environment.SimulationEnvironment;
 import de.jpx3.intave.check.world.PlacementAnalysis;
-import de.jpx3.intave.connect.sibyl.SibylMessageTransmitter;
 import de.jpx3.intave.module.linker.packet.PacketSubscription;
 import de.jpx3.intave.user.MessageChannelSubscriptions;
 import de.jpx3.intave.user.User;
@@ -81,10 +80,8 @@ public final class RoundedRotation extends PlayerCheckPart<PlacementAnalysis> {
 	}
 
 	private void sendDebug(String message) {
-		for (Player authenticatedPlayer : MessageChannelSubscriptions.sibylReceivers()) {
-			if (plugin.sibyl().isAuthenticated(authenticatedPlayer)) {
-				SibylMessageTransmitter.sendMessage(authenticatedPlayer, message);
-			}
+		for (Player debugReceiver : MessageChannelSubscriptions.sibylReceivers()) {
+			UserRepository.userOf(debugReceiver).sendMessage(message);
 		}
 	}
 
