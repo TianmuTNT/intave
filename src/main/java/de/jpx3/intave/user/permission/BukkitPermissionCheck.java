@@ -1,6 +1,5 @@
 package de.jpx3.intave.user.permission;
 
-import de.jpx3.intave.IntavePlugin;
 import de.jpx3.intave.user.User;
 import de.jpx3.intave.user.UserRepository;
 import org.bukkit.entity.Player;
@@ -10,7 +9,8 @@ public final class BukkitPermissionCheck {
   public static boolean permissionCheck(Permissible permissible, String permission) {
     if (permissible instanceof Player) {
       if ("sibyl".equalsIgnoreCase(permission)) {
-        return IntavePlugin.singletonInstance().sibyl().isAuthenticated((Player) permissible);
+        // sibyl is deprecated and removed, nobody holds it anymore
+        return false;
       }
       return playerPermissionCheck((Player) permissible, permission);
     } else {
