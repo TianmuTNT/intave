@@ -1,10 +1,13 @@
 package de.jpx3.intave.cleanup;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
+import java.util.List;
 
 public final class ShutdownTasks {
   private static final Deque<Runnable> tasks = new ArrayDeque<>();
+  private static boolean done = false;
 
   private ShutdownTasks() {
     throw new UnsupportedOperationException("Initialization of helper class");
@@ -14,23 +17,56 @@ public final class ShutdownTasks {
     if (runnable == null) {
       throw new NullPointerException("Null shutdown task");
     }
-    tasks.offerLast(runnable);
+    synchronized (tasks) {
+      // late registrations would never run again, ignore them with a warning
+      if (done) {
+        System.out.println("[Intave] shutdown task added after shutdown, ignoring " + runnable);
+        return;
+      }
+      tasks.offerLast(runnable);
+    }
   }
 
   public static void addBeforeAll(Runnable runnable) {
     if (runnable == null) {
       throw new NullPointerException("Null shutdown task");
     }
-    tasks.offerFirst(runnable);
+    synchronized (tasks) {
+      // late registrations would never run again, ignore them with a warning
+      if (done) {
+        System.out.println("[Intave] shutdown task added after shutdown, ignoring " + runnable);
+        return;
+      }
+      tasks.offerFirst(runnable);
+    }
+  }
+
+  // drops stale state from a previous lifecycle in the same classloader
+  public static void reset() {
+    synchronized (tasks) {
+      tasks.clear();
+      done = false;
+    }
   }
 
   public static void runAll() {
-    for (Runnable task : tasks) {
+    List<Runnable> pending;
+    synchronized (tasks) {
+      // mark done before draining so a second pass is a no-op
+      if (done) {
+        return;
+      }
+      done = true;
+      pending = new ArrayList<>(tasks);
+      tasks.clear();
+    }
+    for (Runnable task : pending) {
       try {
         task.run();
-      } catch (Exception exception) {
+      } catch (Throwable throwable) {
+        // one failing task must not cancel the remaining shutdown tasks
         System.out.println("[Intave] Shutdown task " + task + " failed to complete");
-        exception.printStackTrace();
+        throwable.printStackTrace();
       }
     }
   }

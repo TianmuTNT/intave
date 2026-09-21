@@ -46,12 +46,13 @@ public final class TickEndTask {
   private final Runnable runnable;
   private volatile Object registeredObject;
 
-  private TickEndTask start() {
+  // guard against double start and double cancel, repeats during shutdown must stay quiet
+  private synchronized TickEndTask start() {
     if (this.registeredObject != null) {
       throw new IllegalStateException("Already registered!");
     }
 
-    // Hack to add runnable to tickables
+    // hack to add runnable to tickables
     if (!Runnable.class.isAssignableFrom(TickEndTask.RUNNABLE_CLASS)) {
       Object handle = new Object();
       this.registeredObject = Proxy.newProxyInstance(
@@ -75,13 +76,18 @@ public final class TickEndTask {
     return this;
   }
 
-  public void cancel() {
-    if (this.registeredObject == null) {
-      throw new IllegalStateException("Not registered yet!");
+  // repeated cancel is a no-op so a second shutdown pass stays quiet
+  public synchronized void cancel() {
+    Object handle = this.registeredObject;
+    if (handle == null) {
+      return;
     }
-
-    TickEndTask.RUNNABLES.remove(this.registeredObject);
-    this.registeredObject = null;
+    try {
+      TickEndTask.RUNNABLES.remove(handle);
+    } finally {
+      // clear even if the server list is already gone
+      this.registeredObject = null;
+    }
   }
 
   public static TickEndTask create(Runnable runnable) {
