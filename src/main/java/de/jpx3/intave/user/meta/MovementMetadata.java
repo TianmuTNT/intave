@@ -206,7 +206,7 @@ public final class MovementMetadata implements SimulationEnvironment {
   @Nullable
   private Vector motionMultiplier = null;
   private double jumpMotion;
-  private float aiMoveSpeed, jumpMovementFactor;
+  private float aiMoveSpeed, rawJumpMovementFactor;
   private boolean eyesInWater;
   private boolean swimming;
   // Vehicle
@@ -565,12 +565,8 @@ public final class MovementMetadata implements SimulationEnvironment {
   private void updateMovementMetaData() {
     MetadataBundle meta = user.meta();
     AbilityMetadata abilityData = meta.abilities();
-    jumpMovementFactor = 0.02f;
+    rawJumpMovementFactor = 0.02f;
     aiMoveSpeed = (float) abilityData.attributeValue("generic.movementSpeed", AbilityMetadata.EXCLUDE_SPRINT_MODIFIER);
-    boolean factorAdditionRequired = meta.protocol().protocolVersion() >= 762 ? sprinting : lastSprinting;
-    if (factorAdditionRequired) {
-      jumpMovementFactor = (float) ((double) jumpMovementFactor + (double) 0.02f * 0.3d);
-    }
   }
 
   public boolean blockOnPositionSoulSpeedAffected() {
@@ -1494,14 +1490,14 @@ public final class MovementMetadata implements SimulationEnvironment {
     return sprinting ? aiMoveSpeed * 1.3f : aiMoveSpeed;
   }
 
-  public float jumpMovementFactor() {
-    return jumpMovementFactor;
+  public float rawJumpMovementFactor() {
+    return rawJumpMovementFactor;
   }
 
   @Deprecated
   // Override on vehicle movement
-  public void setJumpMovementFactor(float jumpMovementFactor) {
-    this.jumpMovementFactor = jumpMovementFactor;
+  public void setRawJumpMovementFactor(float rawJumpMovementFactor) {
+    this.rawJumpMovementFactor = rawJumpMovementFactor;
   }
 
   @Override
