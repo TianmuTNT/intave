@@ -70,7 +70,7 @@ public final class MovementCharacteristics {
         speed = aiMoveSpeed * legacyGroundAcceleration;
       }
     } else {
-      speed = environment.jumpMovementFactor();
+      speed = environment.jumpMovementFactor(sprinting);
     }
     return speed;
   }

@@ -584,7 +584,7 @@ public final class MockSimulationEnvironment implements SimulationEnvironment {
   }
 
   @Override
-  public float jumpMovementFactor() {
+  public float rawJumpMovementFactor() {
     return 0.02F;
   }
 

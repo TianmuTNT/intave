@@ -146,7 +146,7 @@ final class ImmutableSimulationEnvironmentCopy implements SimulationEnvironment 
 		this.jumpMotion = source.jumpMotion();
 		this.hasJumpedInTick = source.isJumping();
 		this.gravity = source.gravity();
-		this.jumpMovementFactor = source.jumpMovementFactor();
+		this.jumpMovementFactor = source.rawJumpMovementFactor();
 		this.sneaking = source.isSneaking();
 		this.sprinting = source.isSprinting();
 		this.lastSprinting = source.lastSprinting();
@@ -539,7 +539,7 @@ final class ImmutableSimulationEnvironmentCopy implements SimulationEnvironment 
 	}
 
 	@Override
-	public float jumpMovementFactor() {
+	public float rawJumpMovementFactor() {
 		return jumpMovementFactor;
 	}
 

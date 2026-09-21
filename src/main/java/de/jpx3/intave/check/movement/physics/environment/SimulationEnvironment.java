@@ -308,7 +308,17 @@ public interface SimulationEnvironment {
     return speedFactor;
   }
 
-  float jumpMovementFactor();
+  default float jumpMovementFactor(boolean sprinting) {
+    boolean lastSprinting = lastSprinting();
+    float result = rawJumpMovementFactor();
+    boolean factorAdditionRequired = user().meta().protocol().protocolVersion() >= 762 ? sprinting : lastSprinting;
+    if (factorAdditionRequired) {
+      result = (float) ((double) result + (double) 0.02f * 0.3d);
+    }
+    return result;
+  }
+
+  float rawJumpMovementFactor();
 
   boolean isSprinting();
   boolean isSneaking();

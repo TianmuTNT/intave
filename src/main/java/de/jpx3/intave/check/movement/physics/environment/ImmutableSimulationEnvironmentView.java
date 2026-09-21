@@ -382,8 +382,8 @@ final class ImmutableSimulationEnvironmentView implements SimulationEnvironment 
 	}
 
 	@Override
-	public float jumpMovementFactor() {
-		return delegate.jumpMovementFactor();
+	public float rawJumpMovementFactor() {
+		return delegate.rawJumpMovementFactor();
 	}
 
 	@Override
