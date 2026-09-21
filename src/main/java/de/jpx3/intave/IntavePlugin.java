@@ -98,6 +98,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 import static de.jpx3.intave.user.meta.ProtocolMetadata.VERSION_DETAILS;
 import static java.nio.charset.StandardCharsets.UTF_8;
@@ -128,6 +129,8 @@ public final class IntavePlugin extends JavaPlugin {
   private PlayerListService blackListService; // module candidate
   private Metrics metrics;
   private IntegrationTestService integrationTestService;
+  // only the first shutdown pass runs, repeats are ignored quietly
+  private final AtomicBoolean shutdownStarted = new AtomicBoolean(false);
   private boolean viaBackwardsPingAcknowledgementsMisconfigured;
 
   public IntavePlugin() {
@@ -618,6 +621,10 @@ public final class IntavePlugin extends JavaPlugin {
   }
 
   public void performShutdown() {
+    // onDisable can follow a boot failure shutdown on the same instance
+    if (!shutdownStarted.compareAndSet(false, true)) {
+      return;
+    }
     logger.info("Stopping Intave");
     try {
       configService.shutdown();
