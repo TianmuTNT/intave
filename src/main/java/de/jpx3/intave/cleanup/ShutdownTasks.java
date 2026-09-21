@@ -41,6 +41,14 @@ public final class ShutdownTasks {
     }
   }
 
+  // drops stale state from a previous lifecycle in the same classloader
+  public static void reset() {
+    synchronized (tasks) {
+      tasks.clear();
+      done = false;
+    }
+  }
+
   public static void runAll() {
     List<Runnable> pending;
     synchronized (tasks) {

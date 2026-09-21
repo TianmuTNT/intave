@@ -135,6 +135,8 @@ public final class IntavePlugin extends JavaPlugin {
 
   public IntavePlugin() {
     // stage 2
+    // re-arm shutdown handling in case a previous lifecycle ran in this classloader
+    ShutdownTasks.reset();
     stage2();
   }
 
@@ -170,6 +172,8 @@ public final class IntavePlugin extends JavaPlugin {
 
   @Override
   public void onEnable() {
+    // re-arm for this enable, a reused instance may carry a finished shutdown
+    shutdownStarted.set(false);
     logger.info("Please stand by..");
 
     // stage 4

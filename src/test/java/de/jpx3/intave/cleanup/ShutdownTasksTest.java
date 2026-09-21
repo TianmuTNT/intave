@@ -54,6 +54,12 @@ class ShutdownTasksTest {
       ShutdownTasks.add(counter::incrementAndGet);
       ShutdownTasks.runAll();
       assertEquals(2, counter.get());
+
+      // reset re-arms the queue for the next lifecycle in this classloader
+      ShutdownTasks.reset();
+      ShutdownTasks.add(counter::incrementAndGet);
+      ShutdownTasks.runAll();
+      assertEquals(3, counter.get());
     } finally {
       // restore state for the rest of the suite
       synchronized (tasks) {
