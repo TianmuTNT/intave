@@ -199,7 +199,7 @@ public final class Cloud {
 	public void sendPlayerPacket(
 		User user, LongFunction<? extends Packet<Serverbound>> generator
 	) {
-		if (!user.hasPlayer()) {
+		if (!user.hasPlayer() || !isConnected()) {
 			return;
 		}
 		BackgroundExecutors.execute(() -> {
@@ -212,7 +212,7 @@ public final class Cloud {
 
 	public void requestViolationHistory(User user, Consumer<List<ViolationHistorySession>> callback) {
 		Objects.requireNonNull(callback, "callback");
-		if (!user.hasPlayer()) {
+		if (!user.hasPlayer() || !isConnected()) {
 			return;
 		}
 		UUID requestId = UUID.randomUUID();

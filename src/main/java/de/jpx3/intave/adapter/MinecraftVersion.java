@@ -256,6 +256,10 @@ public final class MinecraftVersion implements Comparable<MinecraftVersion> {
 		return String.format("(MC: %s)", this.getVersion());
 	}
 
+	public String toStringCompact() {
+		return String.format("%s.%s.%s%s%s", this.getMajor(), this.getMinor(), this.getBuild(), this.getDevelopmentStage() != null ? "-" + this.getDevelopmentStage() : "", this.isSnapshot() ? this.snapshot : "");
+	}
+
 	static {
 //    LATEST = v26_1;
 		VERSION_PATTERN = Pattern.compile(".*\\(.*MC.\\s*([a-zA-Z0-9\\-.]+).*");

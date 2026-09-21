@@ -212,7 +212,9 @@ public final class Session {
 		clearPendingCallbacks();
 	}
 
-	public synchronized void sendUserPacket(User user, LongFunction<? extends Packet<Serverbound>> packetGenerator) {
+	public synchronized void sendUserPacket(
+		User user, LongFunction<? extends Packet<Serverbound>> packetGenerator
+	) {
 		if (!user.hasPlayer()) {
 			return;
 		}
@@ -583,8 +585,9 @@ public final class Session {
 	}
 
 	private boolean packetSupported(Packet<Serverbound> packet) {
-		return !protocol.packetIdsKnownFor(SERVERBOUND)
+		boolean supported = !protocol.packetIdsKnownFor(SERVERBOUND)
 			|| protocol.packetAvailable(SERVERBOUND, packet.name());
+		return supported;
 	}
 
 	private static Identity identityOf(User user) {
@@ -601,16 +604,9 @@ public final class Session {
 
 	private static ServerboundPlayerLogin playerLogin(User user, long requestedId) {
 		return new ServerboundPlayerLogin(
-			identityOf(user),
-			requestedId,
-			user.protocolVersion(),
-			serverVersion()
+			identityOf(user), requestedId, user.protocolVersion(),
+			MinecraftVersion.current().toStringCompact()
 		);
-	}
-
-	private static String serverVersion() {
-		MinecraftVersion version = MinecraftVersion.current();
-		return version.getMajor() + "." + version.getMinor() + "." + version.getBuild();
 	}
 
 	private void notifyShutdownSubscribers() {

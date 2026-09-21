@@ -179,7 +179,7 @@ public final class PhysicsReport implements Report {
     addNumber(characteristics, "fallDistance", movement.fallDistance());
     addNumber(characteristics, "frictionMultiplier", movement.frictionMultiplier());
     addNumber(characteristics, "frictionPositionSubtraction", movement.frictionPosSubtraction());
-    addNumber(characteristics, "jumpMovementFactor", movement.jumpMovementFactor());
+    addNumber(characteristics, "jumpMovementFactor", movement.rawJumpMovementFactor());
     addNumber(characteristics, "aiMoveSpeed", movement.aiMoveSpeed(movement.isSprinting()));
     characteristics.addProperty("soulSpeedAffected", movement.blockOnPositionSoulSpeedAffected());
     characteristics.addProperty("collideMaterial", movement.collideMaterial().name());
