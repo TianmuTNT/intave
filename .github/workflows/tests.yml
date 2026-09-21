@@ -11,15 +11,15 @@ jobs:
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           fetch-tags: true
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           java-version: '25'
           distribution: 'temurin'
-      - uses: gradle/actions/setup-gradle@v3
+          cache: gradle
       - name: Export configured Paper versions
         id: matrix
         run: |
@@ -35,22 +35,21 @@ jobs:
       matrix: ${{ fromJSON(needs.versions.outputs.matrix) }}
 
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
           fetch-tags: true
-
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           java-version: '16'
           distribution: 'temurin'
+          cache-jdk: true
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6
         with:
           java-version: '25'
           distribution: 'temurin'
-
-      - uses: gradle/actions/setup-gradle@v3
+          cache: gradle
 
       - name: Run Paper self-test
         env:
