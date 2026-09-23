@@ -85,7 +85,7 @@ public final class CausalConstraint {
 		SimulationEnvironment environment
 	) {
 		return environment.currentTick() >= notBeforeMove &&
-			environment.currentTick() <= notAfterMove && environment.activeSequence() <= sequenceNum;
+			environment.currentTick() <= notAfterMove && environment.activeSequence() < sequenceNum;
 	}
 
 	public boolean expired(SimulationEnvironment environment) {
