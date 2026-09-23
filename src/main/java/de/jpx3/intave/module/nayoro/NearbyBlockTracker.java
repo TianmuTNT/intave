@@ -19,15 +19,18 @@ import de.jpx3.intave.share.BlockState;
 import de.jpx3.intave.share.BoundingBox;
 import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.longs.LongIterator;
 import org.bukkit.Material;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static de.jpx3.intave.share.ClientMath.floor;
 
 final class NearbyBlockTracker {
   private static final double NEARBY_BLOCK_RADIUS = 3.0D;
+  private static final int MAX_RECORDED_BLOCKS = 10_000;
 
   private final Long2ObjectMap<RecordedBlock> recordedBlocks =
     new Long2ObjectOpenHashMap<>();
@@ -73,7 +76,27 @@ final class NearbyBlockTracker {
         }
       }
     }
+    pruneRecordedBlocks();
     return updates;
+  }
+
+  private void pruneRecordedBlocks() {
+    int remaining = recordedBlocks.size();
+    if (remaining <= MAX_RECORDED_BLOCKS) {
+      return;
+    }
+
+    int toRemove = remaining / 2;
+    LongIterator keys = recordedBlocks.keySet().iterator();
+    ThreadLocalRandom random = ThreadLocalRandom.current();
+    while (keys.hasNext() && toRemove > 0) {
+      keys.nextLong();
+      if (random.nextInt(remaining) < toRemove) {
+        keys.remove();
+        toRemove--;
+      }
+      remaining--;
+    }
   }
 
   int recordedBlockCount() {
