@@ -14,6 +14,7 @@ package de.jpx3.intave.check.combat;
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.events.PacketEvent;
+import com.comphenix.protocol.utility.MinecraftReflection;
 import com.comphenix.protocol.wrappers.EnumWrappers.EntityUseAction;
 import de.jpx3.intave.IntaveLogger;
 import de.jpx3.intave.IntavePlugin;
@@ -23,7 +24,6 @@ import de.jpx3.intave.annotate.Nullable;
 import de.jpx3.intave.check.CheckStatistics;
 import de.jpx3.intave.check.CheckViolationLevelDecrementer;
 import de.jpx3.intave.check.MetaCheck;
-import de.jpx3.intave.check.combat.attackraytrace.AttackReach;
 import de.jpx3.intave.check.movement.physics.environment.Pose;
 import de.jpx3.intave.diagnostic.LatencyStudy;
 import de.jpx3.intave.diagnostic.message.DebugBroadcast;
@@ -42,6 +42,7 @@ import de.jpx3.intave.module.violation.Violation;
 import de.jpx3.intave.module.violation.ViolationContext;
 import de.jpx3.intave.packet.PacketSender;
 import de.jpx3.intave.packet.PacketTypes;
+import de.jpx3.intave.packet.reader.BlockDigReader;
 import de.jpx3.intave.packet.reader.EntityUseReader;
 import de.jpx3.intave.packet.reader.PacketReaders;
 import de.jpx3.intave.share.FriendlyByteBuf;
@@ -54,10 +55,14 @@ import de.jpx3.intave.world.raytrace.Raytrace;
 import de.jpx3.intave.world.raytrace.Raytracing;
 import io.netty.buffer.ByteBuf;
 import org.bukkit.ChatColor;
+import org.bukkit.GameMode;
+import org.bukkit.Material;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.*;
 import java.util.function.Function;
 import java.util.zip.DataFormatException;
@@ -112,6 +117,14 @@ public final class AttackRaytrace extends MetaCheck<AttackRaytrace.AttackRaytrac
       List<Action> pendingActions = meta.queuedActions;
       int entityId = packet.getIntegers().read(0);
       Entity entity = EntityTracker.entityByIdentifier(user, entityId);
+      Attack attack = null;
+      if (user.receives(MessageChannel.DEBUG_REACH)) {
+        attack = new Attack(
+          packet.shallowClone(), entityId, entity == null ? 0 : entity.pendingFeedbackPackets(),
+          movement.pose(), user
+        );
+        debugReachCaptured(user, attack);
+      }
       // Allow attacks on invalid entity states
       if (entity == null
         || entity instanceof Entity.Destroyed
@@ -119,13 +132,26 @@ public final class AttackRaytrace extends MetaCheck<AttackRaytrace.AttackRaytrac
         || abilities.unsynchronizedHealth <= 0
         || abilities.inGameModeIncludePending(AbilityTracker.GameMode.SPECTATOR)
       ) {
-        // check again?
+        String reason = entity == null ? "target not tracked"
+          : entity instanceof Entity.Destroyed ? "target destroyed"
+          : entity.isInVehicle() ? "target in vehicle"
+          : !entity.isEntityAlive() ? "target not alive"
+          : abilities.unsynchronizedHealth <= 0 ? "player not alive"
+          : "spectator mode";
+        debugReachSkipped(user, entityId, reason);
         reader.release();
         return;
       }
 
-      AttackReach attackReach = AttackReach.resolve(user);
-      if (attackReach == null) {
+      // Keep the packet-time item range even if the hotbar changes before queued processing.
+      if (attack == null) {
+        attack = new Attack(
+          packet.shallowClone(), entityId, entity.pendingFeedbackPackets(),
+          movement.pose(), user
+        );
+      }
+      if (!attack.reachKnown()) {
+        debugReachSkipped(user, entityId, "item attack range unavailable");
         reader.release();
         return;
       }
@@ -167,8 +193,8 @@ public final class AttackRaytrace extends MetaCheck<AttackRaytrace.AttackRaytrac
       boolean firstRaytraceSuccessful = false;
       if (!inTeleport && !entityInTimeout(user, entity, entity.pendingFeedbackPackets())) {
         // Make a first attempt at ray-tracing to enhance player experience
-        Raytrace raytrace = fireRaytraceFor(user, entity, computeExpansionFor(user, true), true, attackReach);
-        if (raytrace.reach() <= attackReach.maximum()) {
+        Raytrace raytrace = fireRaytraceFor(user, entity, computeExpansionFor(user, true), true, attack);
+        if (raytrace.reach() <= attack.maximumReach()) {
           firstRaytraceSuccessful = true;
           if (user.receives(MessageChannel.DEBUG_ATTACK_RAYTRACE)) {
             user.sendMessage("[AR] Prelim ray successful, reach: " + formatDouble(raytrace.reach(), 12) + " blocks");
@@ -194,13 +220,10 @@ public final class AttackRaytrace extends MetaCheck<AttackRaytrace.AttackRaytrac
       }
       // Only add attack to queue if queue size is small enough
       if (pendingPushable) {
-        PacketContainer clone = packet.shallowClone();
-        Attack attack = new Attack(
-          clone, entityId, resendLater, entity.pendingFeedbackPackets(),
-          user.meta().movement().pose(), attackReach
-        );
+        attack.setShouldResend(resendLater);
         pendingActions.add(attack);
       } else {
+        debugReachSkipped(user, entityId, "attack queue full");
         Violation violation = Violation.builderFor(AttackRaytrace.class)
           .forPlayer(player).withMessage("attacked too many entities at once")
           .withDetails("queued " + pendingActions.size() + " attacks")
@@ -211,6 +234,47 @@ public final class AttackRaytrace extends MetaCheck<AttackRaytrace.AttackRaytrac
       }
     }
     reader.release();
+  }
+
+  @PacketSubscription(packetsIn = BLOCK_DIG)
+  public void receiveStab(User user, BlockDigReader reader) {
+    if (!user.receives(MessageChannel.DEBUG_REACH) || !reader.isStab()) {
+      return;
+    }
+
+    Attack attack = new Attack(null, -1, 0, user.meta().movement().pose(), user);
+    user.sendMessage(ChatColor.DARK_AQUA + "[Reach] " + ChatColor.GOLD + "STAB jab"
+      + reachSnapshotDetails(user, attack));
+    user.sendMessage(ChatColor.DARK_AQUA + "[Reach] " + ChatColor.GRAY
+      + "STAB has no target ID; the server selects targets, so no entity raytrace result follows.");
+  }
+
+  private void debugReachCaptured(User user, Attack attack) {
+    user.sendMessage(ChatColor.DARK_AQUA + "[Reach] " + ChatColor.GRAY + "Attack on target #"
+      + ChatColor.AQUA + attack.entityId() + reachSnapshotDetails(user, attack));
+  }
+
+  private String reachSnapshotDetails(User user, Attack attack) {
+    ItemStack heldItem = user.meta().inventory().heldItem();
+    String item = heldItem == null ? "AIR" : heldItem.getType().name();
+    String limit = attack.reachKnown()
+      ? ChatColor.GREEN + formatDouble(attack.maximumReach(), 4)
+      : ChatColor.RED + "unknown";
+    String margin = attack.reachKnown() ? formatDouble(attack.hitboxMargin(), 4) : "unknown";
+    return ChatColor.GRAY + " with "
+      + ChatColor.GOLD + item + ChatColor.DARK_GRAY + " (slot "
+      + ChatColor.AQUA + user.meta().inventory().handSlot() + ChatColor.DARK_GRAY + ")"
+      + ChatColor.GRAY + "  base " + ChatColor.AQUA + formatDouble(Raytracing.reachDistanceOf(user), 4)
+      + ChatColor.DARK_GRAY + " -> " + ChatColor.GRAY + "limit " + limit
+      + ChatColor.DARK_GRAY + "  margin " + ChatColor.YELLOW + margin
+      + (attack.usedPreviousSpearReach() ? ChatColor.LIGHT_PURPLE + "  prior spear (same tick)" : "");
+  }
+
+  private void debugReachSkipped(User user, int entityId, String reason) {
+    if (user.receives(MessageChannel.DEBUG_REACH)) {
+      user.sendMessage(ChatColor.DARK_AQUA + "[Reach] " + ChatColor.GRAY + "Target #"
+        + ChatColor.AQUA + entityId + ChatColor.GOLD + " skipped: " + ChatColor.GRAY + reason);
+    }
   }
 
 
@@ -278,6 +342,11 @@ public final class AttackRaytrace extends MetaCheck<AttackRaytrace.AttackRaytrac
     PacketContainer packet = event.getPacket();
     // Clear attacks if recently teleported
     if (movement.ticksPast(TELEPORT) <= 1 || movement.awaitTeleport) {
+      for (Action pendingAction : pendingAttacks) {
+        if (pendingAction instanceof Attack) {
+          debugReachSkipped(user, ((Attack) pendingAction).entityId(), "teleport in progress");
+        }
+      }
       pendingAttacks.clear();
     }
     // Apply flying packets (first boolean)
@@ -305,6 +374,11 @@ public final class AttackRaytrace extends MetaCheck<AttackRaytrace.AttackRaytrac
           || attackedEntity instanceof Entity.Destroyed
           || (attackedEntity.hasTypeData() && attackedEntity.typeData().isFireball())
         ) {
+          String reason = entityHealth <= 0 ? "player no longer alive"
+            : attackedEntity == null ? "target no longer tracked"
+            : attackedEntity instanceof Entity.Destroyed ? "target destroyed"
+            : "fireball target";
+          debugReachSkipped(user, pendingAttack.entityId(), reason);
           redirectValidPacket(player, pendingAction.packet());
           continue;
         }
@@ -324,6 +398,7 @@ public final class AttackRaytrace extends MetaCheck<AttackRaytrace.AttackRaytrac
             processAttackRaytraceFor(user, attackedEntity, pendingAttack, computeExpansionFor(user, false));
           }
         } else {
+          debugReachSkipped(user, pendingAttack.entityId(), "entity position timed out");
           if (user.receives(MessageChannel.DEBUG_ATTACK_RAYTRACE)) {
             user.sendMessage("[AR] Attack timed out, ignoring attack");
           }
@@ -513,16 +588,15 @@ public final class AttackRaytrace extends MetaCheck<AttackRaytrace.AttackRaytrac
    * @since 14.5.8
    */
   private void processAttackRaytraceBruteforceFor(User user, Entity entity, Attack attack) {
-    AttackReach attackReach = attack.reach();
-    Raytrace lowestRaytrace = fireRaytraceFor(user, entity, 0.25f, false, attackReach);
+    Raytrace lowestRaytrace = fireRaytraceFor(user, entity, 0.25f, false, attack);
     // Iteratively find out reach if ray-trace wasn't valid
-    if (lowestRaytrace.reach() > attackReach.maximum()) {
-      double reach = findLowestPossibleReachIterative(user, entity, attackReach);
+    if (lowestRaytrace.reach() > attack.maximumReach()) {
+      double reach = findLowestPossibleReachIterative(user, entity, attack);
       // We don't use the positions here anyway, just fill them with empty ones
 //      Position emptyPosition = new Position(0, 0, 0);
       lowestRaytrace = new Raytrace(lowestRaytrace.from(), lowestRaytrace.to(), reach);
     }
-    processResult(user, lowestRaytrace, entity, attack, (float) Math.max(0.25D, attackReach.hitboxMargin()), true);
+    processResult(user, lowestRaytrace, entity, attack, (float) Math.max(0.25D, attack.hitboxMargin()), true);
   }
 
   /**
@@ -538,16 +612,16 @@ public final class AttackRaytrace extends MetaCheck<AttackRaytrace.AttackRaytrac
    * @return The maximum reach possible
    * @since 14.6.0
    */
-  private double findLowestPossibleReachIterative(User user, Entity entity, AttackReach attackReach) {
-    double maximumReach = attackReach.maximum();
-    double minReach = findLowestPossibleReachIterative(user, entity, false, attackReach);
+  private double findLowestPossibleReachIterative(User user, Entity entity, Attack attack) {
+    double maximumReach = attack.maximumReach();
+    double minReach = findLowestPossibleReachIterative(user, entity, false, attack);
     // Stop if reach is already lower than this attack's range to save performance.
     if (minReach < maximumReach) {
       return minReach;
     }
     // Flying packets missing on 1.19+
 //    if (movement.receivedFlyingPacketIn(1) && user.protocolVersion() >= VER_1_9) {
-      double reach = findLowestPossibleReachIterative(user, entity, true, attackReach);
+      double reach = findLowestPossibleReachIterative(user, entity, true, attack);
       minReach = Math.min(minReach, reach);
 //    }
     return minReach;
@@ -562,14 +636,14 @@ public final class AttackRaytrace extends MetaCheck<AttackRaytrace.AttackRaytrac
    * @since 14.6.0
    */
   private double findLowestPossibleReachIterative(
-    User user, Entity entity, boolean currentPosition, AttackReach attackReach) {
+    User user, Entity entity, boolean currentPosition, Attack attack) {
     Player player = user.player();
     double minReach = Raytrace.MISS_DISTANCE;
     HistoryWindow<Entity.EntityPositionContext> history = entity.positionHistory;
     int maximumPendingFeedbackPackets =
       trustFactorSetting("pending-allowance", player)
         + (int) MathHelper.minmax(0, LatencyStudy.cachedAverage(), 20);
-    double maximumReach = attackReach.maximum();
+    double maximumReach = attack.maximumReach();
     boolean livingEntity = entity.typeData().isLivingEntity();
 
     int availableHistory = history.size();
@@ -579,7 +653,7 @@ public final class AttackRaytrace extends MetaCheck<AttackRaytrace.AttackRaytrac
       }
       Entity.EntityPositionContext possiblePosition = history.back(ticksAgo);
       entity.position = possiblePosition.clone();
-      Raytrace resultWithoutIncrement = fireRaytraceFor(user, entity, 0.13f, currentPosition, attackReach);
+      Raytrace resultWithoutIncrement = fireRaytraceFor(user, entity, 0.13f, currentPosition, attack);
       if (resultWithoutIncrement.reach() < maximumReach) {
         return resultWithoutIncrement.reach();
       }
@@ -590,7 +664,7 @@ public final class AttackRaytrace extends MetaCheck<AttackRaytrace.AttackRaytrac
           break;
         }
         entity.onUpdate();
-        Raytrace result = fireRaytraceFor(user, entity, 0.13f, currentPosition, attackReach);
+        Raytrace result = fireRaytraceFor(user, entity, 0.13f, currentPosition, attack);
         if (result.reach() < maximumReach) {
           return result.reach();
         }
@@ -612,8 +686,8 @@ public final class AttackRaytrace extends MetaCheck<AttackRaytrace.AttackRaytrac
    * @since 14.5.8
    */
   private void processAttackRaytraceFor(User user, Entity entity, Attack attack, float expansion) {
-    Raytrace raytrace = fireRaytraceFor(user, entity, expansion, false, attack.reach());
-    processResult(user, raytrace, entity, attack, (float) Math.max(expansion, attack.reach().hitboxMargin()), false);
+    Raytrace raytrace = fireRaytraceFor(user, entity, expansion, false, attack);
+    processResult(user, raytrace, entity, attack, (float) Math.max(expansion, attack.hitboxMargin()), false);
   }
 
   /**
@@ -637,9 +711,21 @@ public final class AttackRaytrace extends MetaCheck<AttackRaytrace.AttackRaytrac
     MetadataBundle meta = user.meta();
     ViolationMetadata violationMeta = meta.violationLevel();
     String entityName = attacked.entityName();
-    double maximumReach = attack.reach().maximum();
+    double maximumReach = attack.maximumReach();
     meta.attack().setLastReach(raytrace.reach());
     RaytraceResult result = RaytraceResult.of(raytrace, maximumReach);
+    if (user.receives(MessageChannel.DEBUG_REACH)) {
+      ChatColor resultColor = result == RaytraceResult.VALID ? ChatColor.GREEN
+        : result == RaytraceResult.REACH ? ChatColor.RED : ChatColor.GOLD;
+      String measured = raytrace.missed() ? "miss" : formatDouble(raytrace.reach(), 4);
+      user.sendMessage(ChatColor.DARK_AQUA + "[Reach] " + ChatColor.GRAY + "Target #"
+        + ChatColor.AQUA + attack.entityId() + " " + resultColor + result
+        + ChatColor.GRAY + "  trace " + ChatColor.AQUA + measured
+        + ChatColor.GRAY + " / " + ChatColor.GREEN + formatDouble(maximumReach, 4)
+        + ChatColor.DARK_GRAY + "  expansion " + ChatColor.YELLOW + formatDouble(expansion, 4)
+        + ChatColor.DARK_GRAY + "  delay " + ChatColor.YELLOW + attack.delay() + "ms"
+        + (estimated ? ChatColor.GOLD + "  (estimated)" : ""));
+    }
     int vl = calculateVlFor(user, raytrace, result, attacked, expansion, estimated);
     String estimationSuffix = estimated ? " (estimated)" : "";
     String message, details, thresholdKey, sibyl;
@@ -810,7 +896,7 @@ public final class AttackRaytrace extends MetaCheck<AttackRaytrace.AttackRaytrac
    * @since 14.5.8
    */
   private Raytrace fireRaytraceFor(
-    User user, Entity entity, float expansion, boolean currentPosition, AttackReach attackReach
+    User user, Entity entity, float expansion, boolean currentPosition, Attack attack
   ) {
     MetadataBundle meta = user.meta();
     MovementMetadata movementData = meta.movement();
@@ -831,7 +917,7 @@ public final class AttackRaytrace extends MetaCheck<AttackRaytrace.AttackRaytrac
       x, y, z,
       lastYaw, yaw,
       movementData.rotationPitch,
-      Math.max(expansion, attackReach.hitboxMargin()), !fixedMouseDelay, attackReach.maximum()
+      Math.max(expansion, attack.hitboxMargin()), !fixedMouseDelay, attack.maximumReach()
     );
   }
 
@@ -898,25 +984,40 @@ public final class AttackRaytrace extends MetaCheck<AttackRaytrace.AttackRaytrac
    * @since 14.5.8
    */
   public static class Attack implements Action {
-    private final boolean shouldResend;
+    private static final MinecraftVersion COMPONENT_VERSION = new MinecraftVersion("1.21.11");
+    private static boolean warned;
+
+    private boolean shouldResend;
     private final PacketContainer packet;
     private final int entityId;
     private final long pendingFeedbackPackets;
     private final Pose playerPose;
-    private final AttackReach reach;
+    private final double maximumReach;
+    private final double hitboxMargin;
+    private final boolean reachKnown;
+    private final boolean usedPreviousSpearReach;
     private final long timestamp = System.currentTimeMillis();
 
     public Attack(
-      PacketContainer packet, int entityId,
-      boolean shouldResend, long pendingFeedbackPackets,
-      Pose playerPose, AttackReach reach
+      PacketContainer packet, int entityId, long pendingFeedbackPackets,
+      Pose playerPose, User user
     ) {
       this.packet = packet;
       this.entityId = entityId;
-      this.shouldResend = shouldResend;
       this.pendingFeedbackPackets = pendingFeedbackPackets;
       this.playerPose = playerPose;
-      this.reach = reach;
+      InventoryMetadata inventory = user.meta().inventory();
+      double[] currentReach = resolveReach(user, inventory.heldItem());
+      ItemStack previousSpear = inventory.previousSpearThisTick();
+      boolean supportsItemReach = user.meta().protocol().protocolVersion() >= ProtocolMetadata.VER_1_21_11
+        && !COMPONENT_VERSION.below();
+      double[] previousReach = previousSpear != null && supportsItemReach
+        ? resolveReach(user, previousSpear) : null;
+      this.usedPreviousSpearReach = usesPreviousReach(currentReach, previousReach);
+      double[] reach = usedPreviousSpearReach ? previousReach : currentReach;
+      this.reachKnown = reach != null;
+      this.maximumReach = reachKnown ? reach[0] : 0.0D;
+      this.hitboxMargin = reachKnown ? reach[1] : 0.0D;
     }
 
     public PacketContainer packet() {
@@ -935,8 +1036,28 @@ public final class AttackRaytrace extends MetaCheck<AttackRaytrace.AttackRaytrac
       return shouldResend;
     }
 
-    AttackReach reach() {
-      return reach;
+    private void setShouldResend(boolean shouldResend) {
+      this.shouldResend = shouldResend;
+    }
+
+    private boolean reachKnown() {
+      return reachKnown;
+    }
+
+    double maximumReach() {
+      return maximumReach;
+    }
+
+    double hitboxMargin() {
+      return hitboxMargin;
+    }
+
+    boolean usedPreviousSpearReach() {
+      return usedPreviousSpearReach;
+    }
+
+    static boolean usesPreviousReach(double[] currentReach, double[] previousReach) {
+      return previousReach != null && (currentReach == null || previousReach[0] > currentReach[0]);
     }
 
     public long delay() {
@@ -946,6 +1067,79 @@ public final class AttackRaytrace extends MetaCheck<AttackRaytrace.AttackRaytrac
     @Override
     public Pose pose() {
       return playerPose;
+    }
+
+    private static double[] resolveReach(User user, ItemStack heldItem) {
+      double normalReach = Raytracing.reachDistanceOf(user);
+      if (user.meta().protocol().protocolVersion() < ProtocolMetadata.VER_1_21_11
+        || COMPONENT_VERSION.below()) {
+        return new double[]{normalReach, 0.0D};
+      }
+
+      if (heldItem == null || heldItem.getAmount() <= 0 || heldItem.getType() == Material.AIR) {
+        return new double[]{normalReach, 0.0D};
+      }
+
+      try {
+        Object nativeItem = MinecraftReflection.getMinecraftItemStack(heldItem);
+        Object component = ComponentAccess.GET.invoke(nativeItem, ComponentAccess.ATTACK_RANGE);
+        if (component == null) {
+          return new double[]{normalReach, 0.0D};
+        }
+        boolean creative = user.meta().abilities().inGameMode(GameMode.CREATIVE);
+        Method maximumMethod = creative ? ComponentAccess.MAX_CREATIVE_RANGE : ComponentAccess.MAX_RANGE;
+        double maximum = ((Number) maximumMethod.invoke(component)).doubleValue();
+        double margin = ((Number) ComponentAccess.HITBOX_MARGIN.invoke(component)).doubleValue();
+        if (!Double.isFinite(maximum) || !Double.isFinite(margin)) {
+          return null;
+        }
+        maximum = Math.max(0.0D, Math.min(64.0D, maximum));
+        margin = Math.max(0.0D, Math.min(1.0D, margin));
+        return new double[]{maximum + margin, margin};
+      } catch (ReflectiveOperationException | RuntimeException | LinkageError exception) {
+        warnOnce(exception);
+        return null;
+      }
+    }
+
+    private static synchronized void warnOnce(Throwable exception) {
+      if (!warned) {
+        warned = true;
+        IntaveLogger.logger().warn("Unable to read item attack range; skipping uncertain attack raytraces: " + exception);
+      }
+    }
+
+    private static final class ComponentAccess {
+      private static final Object ATTACK_RANGE;
+      private static final Method GET;
+      private static final Method MAX_RANGE;
+      private static final Method MAX_CREATIVE_RANGE;
+      private static final Method HITBOX_MARGIN;
+
+      static {
+        try {
+          ClassLoader loader = MinecraftReflection.getItemStackClass().getClassLoader();
+          Class<?> type = Class.forName("net.minecraft.core.component.DataComponentType", true, loader);
+          Class<?> components = Class.forName("net.minecraft.core.component.DataComponents", true, loader);
+          Class<?> range = Class.forName("net.minecraft.world.item.component.AttackRange", true, loader);
+          ATTACK_RANGE = components.getField("ATTACK_RANGE").get(null);
+          GET = MinecraftReflection.getItemStackClass().getMethod("get", type);
+          MAX_RANGE = accessor(range, "maxReach", "maxRange");
+          MAX_CREATIVE_RANGE = accessor(range, "maxCreativeReach", "maxCreativeRange");
+          HITBOX_MARGIN = range.getMethod("hitboxMargin");
+        } catch (ReflectiveOperationException exception) {
+          throw new IllegalStateException("Unable to resolve attack-range item component", exception);
+        }
+      }
+
+      private static Method accessor(Class<?> type, String currentName, String previousName)
+        throws NoSuchMethodException {
+        try {
+          return type.getMethod(currentName);
+        } catch (NoSuchMethodException ignored) {
+          return type.getMethod(previousName);
+        }
+      }
     }
   }
 

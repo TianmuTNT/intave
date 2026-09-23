@@ -111,6 +111,10 @@ public class PlayerHandTracker extends Module {
 ////      });
 //    }
 
+    if (slot != inventoryData.handSlot() && user.meta().protocol().sendsClientTickEnd()) {
+      inventoryData.recordPreviousHeldItemForReach(inventoryData.heldItem());
+    }
+
     // apparently required?
     inventoryData.setHeldItemSlot(slot);
 
@@ -130,6 +134,11 @@ public class PlayerHandTracker extends Module {
     inventoryData.slotSwitchData = new InventoryMetadata.SlotSwitchData(slot, item);
   }
 
+  @PacketSubscription(packetsIn = CLIENT_TICK_END)
+  public void receiveClientTickEnd(User user) {
+    user.meta().inventory().clearPreviousSpearThisTick();
+  }
+
   @PacketSubscription(
     packetsOut = {
       HELD_ITEM_SLOT_OUT
@@ -147,6 +156,7 @@ public class PlayerHandTracker extends Module {
 
     Modules.feedback().synchronize(player, slot, (player1, slot1) -> {
       user.meta().inventory().setHeldItemSlot(slot);
+      user.meta().inventory().clearPreviousSpearThisTick();
     });
   }
 

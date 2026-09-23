@@ -35,6 +35,7 @@ public enum MessageChannel {
 	DEBUG_PLAYER_ACTIONS("intave.command.verbose", false),
 	DEBUG_NERFS("intave.command.verbose", false),
 	DEBUG_POSITION("intave.command.verbose", false),
+	DEBUG_REACH("intave.command.verbose", false),
 	DEBUG_TELEPORT("intave.command.verbose", false),
 	NOTIFY("intave.command.notify", true),
 	VIOLATION_FINE("intave.command.verbose", false),

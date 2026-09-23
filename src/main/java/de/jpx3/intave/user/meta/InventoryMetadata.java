@@ -54,6 +54,7 @@ public final class InventoryMetadata {
   public int pastSlotSwitch;
   private boolean inventoryOpen;
   private int handSlot;
+  private ItemStack previousSpearThisTick;
   private volatile boolean handActive;
   private final Lock handActiveLock = new ReentrantLock();
   private Material activeItemType;
@@ -130,6 +131,21 @@ public final class InventoryMetadata {
 
   public int handSlot() {
     return handSlot;
+  }
+
+  public void recordPreviousHeldItemForReach(ItemStack item) {
+    previousSpearThisTick = item != null && item.getAmount() > 0
+      && item.getType().name().endsWith("_SPEAR")
+      ? item.clone() : null;
+  }
+
+  @Nullable
+  public ItemStack previousSpearThisTick() {
+    return previousSpearThisTick;
+  }
+
+  public void clearPreviousSpearThisTick() {
+    previousSpearThisTick = null;
   }
 
   public Material heldItemType() {

@@ -15,6 +15,16 @@ import com.comphenix.protocol.wrappers.EnumWrappers;
 import de.jpx3.intave.annotate.Nullable;
 
 public final class BlockDigReader extends BlockPositionReader {
+  public boolean isStab() {
+    // ProtocolLib versions predating spears cannot convert STAB to PlayerDigType.
+    for (Object value : packet().getModifier().getValues()) {
+      if (value instanceof Enum && "STAB".equals(((Enum<?>) value).name())) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   public @Nullable EnumWrappers.PlayerDigType action() {
     try {
       return packet().getPlayerDigTypes().readSafely(0);
