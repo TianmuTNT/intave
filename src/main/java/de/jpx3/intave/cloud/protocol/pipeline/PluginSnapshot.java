@@ -23,13 +23,7 @@ import java.nio.file.Paths;
 import java.security.CodeSource;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.util.Collections;
-import java.util.Enumeration;
-import java.util.Map;
-import java.util.TreeMap;
 import java.util.function.Consumer;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 
 final class PluginSnapshot {
   private final String name;
@@ -50,7 +44,6 @@ final class PluginSnapshot {
 
   EnvironmentPlugin collect(Consumer<String> warning) {
     String sha256 = "";
-    Map<String, String> classSha256s = Collections.emptyMap();
     try {
       if (source == null || !"file".equalsIgnoreCase(source.getProtocol())) {
         throw new IOException("Plugin has no local code source");

@@ -40,25 +40,16 @@ import static org.junit.jupiter.api.Assertions.*;
 final class PluginSnapshotTest {
   private static final String ABC_SHA256 =
     "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad";
-  private static final String EMPTY_SHA256 =
-    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
   @TempDir
   Path directory;
 
   @Test
-  void responseContainsJarAndClassHashesAndPreservesRequestMetadata() throws Exception {
-    byte[] largeClass = new byte[25_000];
-    for (int i = 0; i < largeClass.length; i++) {
-      largeClass[i] = (byte) (i * 31);
-    }
+  void responseContainsJarHashAndPreservesRequestMetadata() throws Exception {
     Path file = directory.resolve("plugin # one.jar");
     try (JarOutputStream jar = new JarOutputStream(Files.newOutputStream(file))) {
       entry(jar, "example/", new byte[0]);
-      entry(jar, "ignored.class/", new byte[0]);
       entry(jar, "example/Main.class", "abc".getBytes(StandardCharsets.UTF_8));
-      entry(jar, "example/Main$Nested.class", largeClass);
-      entry(jar, "META-INF/versions/17/example/Main.class", new byte[0]);
       entry(jar, "plugin.yml", "name: Example".getBytes(StandardCharsets.UTF_8));
     }
     List<String> warnings = new ArrayList<>();
@@ -83,13 +74,7 @@ final class PluginSnapshotTest {
     assertEquals("1.2.3", pluginJson.get("version").getAsString());
     assertEquals(Hashing.sha256().hashBytes(Files.readAllBytes(file)).toString(),
       pluginJson.get("sha256").getAsString());
-    JsonObject classes = pluginJson.getAsJsonObject("classSha256s");
-    assertEquals(3, classes.entrySet().size());
-    assertEquals(ABC_SHA256, classes.get("example/Main.class").getAsString());
-    assertEquals(Hashing.sha256().hashBytes(largeClass).toString(),
-      classes.get("example/Main$Nested.class").getAsString());
-    assertEquals(EMPTY_SHA256,
-      classes.get("META-INF/versions/17/example/Main.class").getAsString());
+    assertEquals(3, pluginJson.entrySet().size());
     // Windows refuses to delete the archive if the collector leaves it open.
     Files.delete(file);
   }
@@ -109,22 +94,20 @@ final class PluginSnapshotTest {
     assertEquals("Example", plugins.get(0).name());
     assertEquals("1.2.3", plugins.get(0).version());
     assertEquals("", plugins.get(0).sha256());
-    assertEquals(0, serialize(plugins.get(0)).getAsJsonObject("classSha256s").entrySet().size());
-    assertEquals(ABC_SHA256, serialize(plugins.get(1)).getAsJsonObject("classSha256s")
-      .get("example/Main.class").getAsString());
+    assertEquals(Hashing.sha256().hashBytes(Files.readAllBytes(valid)).toString(),
+      plugins.get(1).sha256());
     assertEquals(1, warnings.size());
     assertTrue(warnings.get(0).contains("Example"));
   }
 
   @Test
-  void invalidArchiveRetainsItsFileHashAndReportsTheFailure() throws Exception {
+  void nonJarFileStillGetsItsFileHash() throws Exception {
     Path invalid = Files.write(directory.resolve("invalid.jar"), "abc".getBytes(StandardCharsets.UTF_8));
     List<String> warnings = new ArrayList<>();
     EnvironmentPlugin plugin = snapshot(invalid).collect(warnings::add);
 
     assertEquals(ABC_SHA256, plugin.sha256());
-    assertEquals(0, serialize(plugin).getAsJsonObject("classSha256s").entrySet().size());
-    assertEquals(1, warnings.size());
+    assertTrue(warnings.isEmpty());
     Files.delete(invalid);
   }
 
@@ -137,7 +120,6 @@ final class PluginSnapshotTest {
     assertEquals("Custom", plugin.name());
     assertEquals("2.0", plugin.version());
     assertEquals("", plugin.sha256());
-    assertEquals(0, serialize(plugin).getAsJsonObject("classSha256s").entrySet().size());
     assertEquals(1, warnings.size());
   }
 
@@ -149,14 +131,6 @@ final class PluginSnapshotTest {
     jar.putNextEntry(new JarEntry(name));
     jar.write(bytes);
     jar.closeEntry();
-  }
-
-  private static JsonObject serialize(EnvironmentPlugin plugin) throws Exception {
-    StringWriter output = new StringWriter();
-    try (JsonWriter writer = new JsonWriter(output)) {
-      plugin.serialize(writer);
-    }
-    return new JsonParser().parse(output.toString()).getAsJsonObject();
   }
 
   private static JsonObject serialize(ServerboundEnvironmentResponse response) throws Exception {
