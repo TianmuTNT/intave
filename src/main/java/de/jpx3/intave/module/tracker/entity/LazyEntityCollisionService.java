@@ -2,13 +2,14 @@ package de.jpx3.intave.module.tracker.entity;
 
 import de.jpx3.intave.module.Module;
 import de.jpx3.intave.module.linker.bukkit.BukkitEventSubscription;
+import de.jpx3.intave.share.Position;
 import de.jpx3.intave.user.User;
 import de.jpx3.intave.user.UserRepository;
 import de.jpx3.intave.user.meta.MovementMetadata;
-import org.bukkit.Location;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
+import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 
 import java.util.EnumSet;
@@ -35,6 +36,11 @@ public final class LazyEntityCollisionService extends Module {
     searchCollisions(user, entities);
   }
 
+  @BukkitEventSubscription
+  public void on(PlayerChangedWorldEvent event) {
+    UserRepository.userOf(event.getPlayer()).meta().movement().nearestBoatPosition = null;
+  }
+
   private void searchCollisions(User user, List<Entity> entities) {
     MovementMetadata movementData = user.meta().movement();
     boolean entityFound = false;
@@ -42,15 +48,15 @@ public final class LazyEntityCollisionService extends Module {
       if (!BOAT_ENTITIES.contains(entity.getType())) {
         continue;
       }
-      Location entityLocation = entity.getLocation();
-      double distance = movementData.distanceToVerifiedLocation(entityLocation);
+      Position entityPosition = Position.of(entity.getLocation());
+      double distance = movementData.distanceToVerifiedPosition(entityPosition);
       if (distance < DISTANCE_TO_ENTITY) {
-        movementData.nearestBoatLocation = entityLocation;
+        movementData.nearestBoatPosition = entityPosition;
         entityFound = true;
       }
     }
     if (!entityFound) {
-      movementData.nearestBoatLocation = null;
+      movementData.nearestBoatPosition = null;
     }
   }
 }

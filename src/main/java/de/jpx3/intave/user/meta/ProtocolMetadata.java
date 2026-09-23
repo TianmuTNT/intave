@@ -154,6 +154,14 @@ public final class ProtocolMetadata {
     return protocolVersion <= VER_1_11_1 && !outdatedClient();
   }
 
+  public boolean supportsTeleportAccepts() {
+    return protocolVersion >= VER_1_9 && MinecraftVersions.VER1_9_0.atOrAbove();
+  }
+
+  public boolean legacyTeleportRelativeMotionBehavior() {
+    return protocolVersion >= VER_1_8 && protocolVersion <= VER_1_13_2;
+  }
+
   public boolean applyModernCollider() {
     return protocolVersion >= VER_1_14;
   }

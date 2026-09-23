@@ -109,7 +109,7 @@ public final class Balance extends MetaCheckPart<Timer, Balance.BalanceMeta> {
       ViolationContext violationContext = Modules.violationProcessor().processViolation(violation);
       if (violationContext.shouldCounterThreat()) {
         movementData.invalidMovement = true;
-        Modules.mitigate().movement().emulationSetBack(player, movementData.mutableBaseMotionCopy(), 3, 2, false);
+
       }
       timerData.lastTimerFlag = System.currentTimeMillis();
       timerData.timerBalance -= TimeUnit.MILLISECONDS.toNanos(violationContext.shouldCounterThreat() ? 5 : 10);

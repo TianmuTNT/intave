@@ -19,7 +19,6 @@ import de.jpx3.intave.block.physics.BlockProperties;
 import de.jpx3.intave.check.movement.physics.config.MovementConfiguration;
 import de.jpx3.intave.check.movement.physics.environment.SimulationEnvironment;
 import de.jpx3.intave.diagnostic.timings.Timings;
-import de.jpx3.intave.executor.Synchronizer;
 import de.jpx3.intave.math.SinusCache;
 import de.jpx3.intave.player.collider.Colliders;
 import de.jpx3.intave.player.collider.complex.SimulationResult;
@@ -29,7 +28,6 @@ import de.jpx3.intave.share.Motion;
 import de.jpx3.intave.share.Position;
 import de.jpx3.intave.user.User;
 import org.bukkit.Material;
-import org.bukkit.entity.Player;
 
 import javax.annotation.Nullable;
 
@@ -271,13 +269,6 @@ public final class BoatSimulator extends BaseSimulator {
     BoundingBox boundingBox = BoundingBox.fromPosition(user, environment, position);
     environment.setBoundingBox(boundingBox);
     return motion.copy();
-  }
-
-  @Override
-  public void setback(User user, SimulationEnvironment environment, double predictedX, double predictedY, double predictedZ) {
-    Player player = user.player();
-    Synchronizer.synchronize(user, player::leaveVehicle);
-    environment.dismountRidingEntity("Boat setback");
   }
 
   @Override

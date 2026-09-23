@@ -105,6 +105,7 @@ public final class PacketReaders {
     setup(POSITION_LOOK, PlayerMoveReader::new);
     setup(STEER_VEHICLE, SteerVehicleReader::new);
     setup(Client.TRANSACTION, TransactionReader::new);
+    setup(TELEPORT_ACCEPT, TeleportAcceptReader::new);
     setup(Client.UPDATE_SIGN, BlockPositionReader::new);
     setup(USE_ENTITY, EntityUseReader::new);
     setup(USE_ITEM, BlockInteractionReader::new);

@@ -73,7 +73,7 @@ public final class BalanceButActuallyGood extends MetaCheckPart<Timer, BalanceBu
       if (violationContext.shouldCounterThreat()) {
         MovementMetadata movementData = user.meta().movement();
         movementData.invalidMovement = true;
-        Modules.mitigate().movement().emulationSetBack(player, movementData.mutableBaseMotionCopy(), 12, false);
+
       }
 
       reset(user);

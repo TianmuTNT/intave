@@ -25,7 +25,6 @@ import de.jpx3.intave.check.movement.physics.environment.MovementCharacteristics
 import de.jpx3.intave.check.movement.physics.environment.Pose;
 import de.jpx3.intave.check.movement.physics.environment.SimulationEnvironment;
 import de.jpx3.intave.diagnostic.timings.Timings;
-import de.jpx3.intave.module.Modules;
 import de.jpx3.intave.module.tracker.entity.Entity;
 import de.jpx3.intave.player.Effects;
 import de.jpx3.intave.player.Enchantments;
@@ -35,7 +34,6 @@ import de.jpx3.intave.share.*;
 import de.jpx3.intave.user.User;
 import de.jpx3.intave.user.meta.MetadataBundle;
 import de.jpx3.intave.user.meta.ProtocolMetadata;
-import de.jpx3.intave.user.meta.ViolationMetadata;
 import org.bukkit.Material;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
@@ -994,19 +992,6 @@ class BaseSimulator extends Simulator {
         motionVector.motionZ += zDistance;
       }
     }
-  }
-
-  @Override
-  public void setback(User user, SimulationEnvironment environment, double predictedX, double predictedY, double predictedZ) {
-    ViolationMetadata violationMetadata = user.meta().violationLevel();
-    int setbackTicks = (environment.ticksPast(EXTERNAL_VELOCITY) <= 8) ? 8 : ((violationMetadata.physicsVL > 50) ? 3 : 2);
-    Modules.mitigate()
-      .movement()
-      .emulationSetBack(
-        user.player(), Motion.of(
-          predictedX, predictedY, predictedZ
-        ), setbackTicks, (environment.ticksPast(EXTERNAL_VELOCITY) > 16)
-      );
   }
 
   @Override

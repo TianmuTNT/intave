@@ -54,6 +54,9 @@ public final class Rotation implements Serializable {
 	}
 
 	public float distanceTo(Rotation rotation) {
+		if (rotation == null) {
+			throw new IllegalArgumentException("Rotation must not be null");
+		}
 		float yawDistance = MathHelper.distanceInDegrees(yaw, rotation.yaw);
 		float pitchDistance = MathHelper.distanceInDegrees(pitch, rotation.pitch);
 		return yawDistance + pitchDistance;
@@ -69,6 +72,29 @@ public final class Rotation implements Serializable {
 
 	public Rotation add(Rotation rotation) {
 		return new Rotation(yaw + rotation.yaw, pitch + rotation.pitch);
+	}
+
+	public Rotation subtract(Rotation rotation) {
+		return new Rotation(yaw - rotation.yaw, pitch - rotation.pitch);
+	}
+
+	public boolean isZero() {
+		return yaw == 0 && pitch == 0;
+	}
+
+	public boolean isWithin(Rotation rotation, float threshold) {
+		if (rotation == null) {
+			throw new IllegalArgumentException("Rotation must not be null");
+		}
+		if (Float.isNaN(threshold)) {
+			return true;
+		}
+		if (threshold < 0) {
+			throw new IllegalArgumentException("Threshold must be non-negative");
+		}
+		float yawDistance = MathHelper.distanceInDegrees(yaw, rotation.yaw);
+		float pitchDistance = MathHelper.distanceInDegrees(pitch, rotation.pitch);
+		return yawDistance <= threshold && pitchDistance <= threshold;
 	}
 
 	@Override
@@ -101,7 +127,7 @@ public final class Rotation implements Serializable {
 	private static final Rotation ZERO = new Rotation(0, 0);
 
 	public static Rotation zero() {
-		return ZERO;
+		return new Rotation(0, 0);
 	}
 
 	public static Rotation random() {

@@ -45,7 +45,6 @@ import de.jpx3.intave.user.UserRepository;
 import de.jpx3.intave.user.meta.MovementMetadata;
 import de.jpx3.intave.user.meta.ProtocolMetadata;
 import de.jpx3.intave.world.permission.WorldPermission;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -56,7 +55,6 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerBucketEmptyEvent;
 import org.bukkit.event.player.PlayerBucketFillEvent;
-import org.bukkit.util.NumberConversions;
 import org.bukkit.util.Vector;
 
 import java.util.Objects;
@@ -181,9 +179,9 @@ public final class InteractionEmulator implements EventProcessor {
       // add to future bounding boxes
       BlockCache blockStateAccess = userOf(player).blockCache();
 
-      Location verifiedLocation = user.meta().movement().verifiedLocation();
-      if (distance(verifiedLocation, blockPosition) < 2
-        && blockPosition.getY() < verifiedLocation.getBlockY()) {
+      Position verifiedPosition = user.meta().movement().verifiedPosition();
+      if (verifiedPosition.distance(de.jpx3.intave.share.BlockPosition.fromProtocolLib(blockPosition)) < 2
+        && blockPosition.getY() < verifiedPosition.getBlockY()) {
         user.meta().movement().activeTick(NEARBY_COLLISION_INACCURACY);
       }
 
@@ -200,13 +198,6 @@ public final class InteractionEmulator implements EventProcessor {
       blockStateAccess.invalidateCacheAround(blockX, blockY, blockZ);
     }
     return access ? EmulationResult.SUCCEEDED : EmulationResult.FAILED_CRITICAL;
-  }
-
-  private static double distance(Location playerLocation, BlockPosition blockPosition) {
-    return Math.sqrt(
-      NumberConversions.square(playerLocation.getBlockX() - blockPosition.getX())
-        + NumberConversions.square(playerLocation.getBlockY() - blockPosition.getY())
-        + NumberConversions.square(playerLocation.getBlockZ() - blockPosition.getZ()));
   }
 
   private static final String STEP_PROPERTY_NAME = MinecraftVersions.VER1_13_0.atOrAbove() ? "type" : "half";

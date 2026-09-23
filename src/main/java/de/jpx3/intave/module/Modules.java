@@ -11,7 +11,6 @@ import de.jpx3.intave.module.linker.nayoro.NayoroEventSubscriptionLinker;
 import de.jpx3.intave.module.linker.packet.PacketSubscriptionLinker;
 import de.jpx3.intave.module.mitigate.CombatMitigator;
 import de.jpx3.intave.module.mitigate.ReconDelayLimiter;
-import de.jpx3.intave.module.mitigate.SetbackSimulator;
 import de.jpx3.intave.module.nayoro.Nayoro;
 import de.jpx3.intave.module.player.StorageLoader;
 import de.jpx3.intave.module.test.PhysicsTestRecorder;
@@ -138,10 +137,6 @@ public final class Modules {
   public static class MitigateCategory {
     public CombatMitigator combat() {
       return find(CombatMitigator.class);
-    }
-
-    public SetbackSimulator movement() {
-      return find(SetbackSimulator.class);
     }
 
     public ReconDelayLimiter reconnectionLimiter() {

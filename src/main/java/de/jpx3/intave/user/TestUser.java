@@ -29,10 +29,13 @@ import de.jpx3.intave.module.feedback.FeedbackObserver;
 import de.jpx3.intave.module.mitigate.AttackNerfStrategy;
 import de.jpx3.intave.module.violation.placeholder.PlayerContext;
 import de.jpx3.intave.module.violation.placeholder.UserContext;
+import de.jpx3.intave.packet.Relative;
 import de.jpx3.intave.player.collider.Colliders;
 import de.jpx3.intave.player.collider.complex.Collider;
 import de.jpx3.intave.player.collider.simple.SimpleCollider;
 import de.jpx3.intave.player.meta.IntaveMetadataValue;
+import de.jpx3.intave.share.Motion;
+import de.jpx3.intave.share.PositionMoveRotation;
 import de.jpx3.intave.user.meta.CheckCustomMetadata;
 import de.jpx3.intave.user.meta.MetadataBundle;
 import de.jpx3.intave.user.permission.PermissionCache;
@@ -44,6 +47,7 @@ import org.bukkit.entity.Player;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.*;
@@ -429,6 +433,16 @@ final class TestUser implements User {
 
   @Override
   public void sendMessage(String message) {
+
+  }
+
+  @Override
+  public void teleport(PositionMoveRotation change, Set<Relative> relativeSet) {
+
+  }
+
+  @Override
+  public void sendVelocity(Motion motion) {
 
   }
 

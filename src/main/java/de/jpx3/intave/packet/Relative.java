@@ -28,6 +28,7 @@ public enum Relative {
   public static final Set<Relative> ALL_RELATIVE = new HashSet<>(Arrays.asList(values()));
   public static final Set<Relative> RELATIVE_POSITION = new HashSet<>(Arrays.asList(X, Y, Z));
   public static final Set<Relative> RELATIVE_ROTATION = new HashSet<>(Arrays.asList(Y_ROT, X_ROT));
+  public static final Set<Relative> RELATIVE_POSITION_AND_ROTATION = new HashSet<>(Arrays.asList(X, Y, Z, Y_ROT, X_ROT));
   public static final Set<Relative> RELATIVE_MOTION = new HashSet<>(Arrays.asList(DELTA_X, DELTA_Y, DELTA_Z, ROTATE_DELTA));
 
   private final int slot;

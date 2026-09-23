@@ -1,19 +1,41 @@
 package de.jpx3.intave.packet.reader;
 
+import com.comphenix.protocol.PacketType;
+import com.comphenix.protocol.ProtocolLibrary;
+import com.comphenix.protocol.events.PacketContainer;
+import com.comphenix.protocol.reflect.StructureModifier;
 import de.jpx3.intave.adapter.MinecraftVersions;
 import de.jpx3.intave.packet.Relative;
 import de.jpx3.intave.packet.converter.PosMoveRotConverter;
-import de.jpx3.intave.share.Motion;
-import de.jpx3.intave.share.Position;
-import de.jpx3.intave.share.PositionMoveRotation;
-import de.jpx3.intave.share.Rotation;
+import de.jpx3.intave.share.*;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.Player;
 
+import java.util.OptionalInt;
 import java.util.Set;
+import java.util.EnumSet;
 
 public final class PlayerTeleportReader extends AbstractPacketReader {
   private final static boolean DIRECT_PMR_USED = MinecraftVersions.VER1_21_3.atOrAbove();
   private PositionMoveRotation positionMoveRotation;
+  private Motion companionMotion;
+  private Boolean additiveCompanionMotion;
   private boolean mod;
+
+  public OptionalInt teleportId() {
+    StructureModifier<Integer> integers = packet().getIntegers();
+    if (integers.size() < 1) {
+      return OptionalInt.empty();
+    }
+    return OptionalInt.of(integers.read(0));
+  }
+
+  public void setTeleportId(int id) {
+    StructureModifier<Integer> integers = packet().getIntegers();
+	  if (integers.size() > 0) {
+	    integers.write(0, id);
+	  }
+  }
 
   public double positionX() {
     if (DIRECT_PMR_USED) {
@@ -202,6 +224,12 @@ public final class PlayerTeleportReader extends AbstractPacketReader {
     }
   }
 
+  public void setPositionMoveRotation(PositionMoveRotation posMoveRot) {
+    writePositionMoveRotation(posMoveRot);
+    positionMoveRotation = posMoveRot;
+    mod = true;
+  }
+
   /*
     Flushing is usually not required, but some very niece packet readers do
     require flushing before the packet is accessed.
@@ -221,14 +249,89 @@ public final class PlayerTeleportReader extends AbstractPacketReader {
   public void release() {
     flush();
     positionMoveRotation = null;
+    companionMotion = null;
+    additiveCompanionMotion = null;
     super.release();
   }
+
+  // if it is just adding motion (all relative and motions are the only thing with chg),
+  //  we can replace it with an explosion packet
+  public boolean couldBeAnExplosionPacketInstead() {
+    if (!DIRECT_PMR_USED) {
+      return false;
+    }
+    PositionMoveRotation pmr = internalPosMoveRotation();
+    return pmr.position().isZero() && pmr.rotation().isZero() && !pmr.motion().isZero();
+  }
+
+  public Teleport readTeleport(long uniqueId) {
+    return new Teleport(uniqueId, teleportId(), positionMoveRotation(), flags());
+  }
+
+  public PacketContainer motionCompanionPacket(Entity entity) {
+    if (MinecraftVersions.VER1_21_3.atOrAbove()) {
+      return null;
+    }
+    Motion legacy = companionMotion;
+    Boolean additive = additiveCompanionMotion;
+    PacketContainer companion = null;
+    if (additive != null) {
+      companion = ProtocolLibrary.getProtocolManager().createPacket(additive ?
+        PacketType.Play.Server.EXPLOSION :
+        PacketType.Play.Server.ENTITY_VELOCITY
+      );
+      if (additive) {
+        try (ExplosionReader reader = PacketReaders.readerOf(companion)) {
+          reader.setSilentDefaults();
+          reader.setMotion(legacy);
+        }
+      } else {
+        try (EntityVelocityReader reader = PacketReaders.readerOf(companion)) {
+          reader.setEntityId(entity.getEntityId());
+          reader.setMotion(legacy);
+        }
+      }
+    }
+    return companion;
+  }
+
+  public void writeTeleport(Teleport teleport) {
+		if (teleport == null) {
+			throw new IllegalArgumentException("teleport must not be null");
+		}
+    additiveCompanionMotion = teleport.additiveMotionPacket();
+    Position position = teleport.change().position();
+    Motion motion = teleport.change().motion();
+    Rotation rotation = teleport.change().rotation();
+    companionMotion = additiveCompanionMotion == null ? null : motion.copy();
+    setPositionX(position.getX());
+    setPositionY(position.getY());
+    setPositionZ(position.getZ());
+    setYaw(rotation.yaw());
+		setPitch(rotation.pitch());
+		setFlags(teleport.relativeSet());
+    if (teleport.id().isPresent()) {
+			packet().getIntegers().write(0, teleport.id().getAsInt());
+		}
+    if (DIRECT_PMR_USED) {
+      setMotionX(motion.motionX());
+      setMotionY(motion.motionY());
+      setMotionZ(motion.motionZ());
+		}
+	}
 
   public Set<Relative> flags() {
     return Relative.flagsFrom(packet());
   }
 
   public void setFlags(Set<Relative> flags) {
-    Relative.writeFlags(packet(), flags);
+    if (!DIRECT_PMR_USED) {
+      Set<Relative> legacyFlags = EnumSet.noneOf(Relative.class);
+      legacyFlags.addAll(flags);
+      legacyFlags.retainAll(Relative.RELATIVE_POSITION_AND_ROTATION);
+      Relative.writeFlags(packet(), legacyFlags);
+    } else {
+      Relative.writeFlags(packet(), flags);
+    }
   }
 }

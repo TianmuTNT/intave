@@ -204,11 +204,11 @@ public final class BlockUpdateTracker extends Module {
     World world = player.getWorld();
     EmptyFeedbackCallback process = () -> {
       BlockCache blockCache = user.blockCache();
-      Location verifiedLocation = user.meta().movement().verifiedLocation();
+      Position verifiedPosition = user.meta().movement().verifiedPosition();
       for (int i = 0; i < blockPositions.size(); i++) {
         BlockPosition blockPosition = blockPositions.get(i);
         WrappedBlockData blockData = blockDataList.get(i);
-        if (distance(verifiedLocation, blockPosition) < 2) {
+        if (distance(verifiedPosition, blockPosition) < 2) {
           user.meta().movement().activeTick(NEARBY_COLLISION_INACCURACY);
         }
         Material material = blockData.getType();
@@ -254,15 +254,16 @@ public final class BlockUpdateTracker extends Module {
   }
 
   private static boolean inDistance(Collection<? extends BlockPosition> blockPositions, Location playerLocation, int requiredDistance) {
+    Position playerPosition = Position.of(playerLocation);
     for (BlockPosition blockPosition : blockPositions) {
-      if (distance(playerLocation, blockPosition) < requiredDistance) {
+      if (distance(playerPosition, blockPosition) < requiredDistance) {
         return true;
       }
     }
     return false;
   }
 
-  private static double distance(Location playerLocation, BlockPosition blockPosition) {
+  private static double distance(Position playerLocation, BlockPosition blockPosition) {
     return Math.sqrt(
       NumberConversions.square(playerLocation.getBlockX() - blockPosition.getX()) +
         NumberConversions.square(playerLocation.getBlockY() - blockPosition.getY()) +

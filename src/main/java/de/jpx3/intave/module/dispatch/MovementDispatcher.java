@@ -69,7 +69,6 @@ import de.jpx3.intave.user.User;
 import de.jpx3.intave.user.UserRepository;
 import de.jpx3.intave.user.meta.*;
 import de.jpx3.intave.world.Particles;
-import de.jpx3.intave.world.WorldHeight;
 import de.jpx3.intave.world.border.WorldBorder;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
@@ -102,12 +101,13 @@ import static de.jpx3.intave.module.linker.packet.PacketId.Client.POSITION;
 import static de.jpx3.intave.module.linker.packet.PacketId.Client.VEHICLE_MOVE;
 import static de.jpx3.intave.module.linker.packet.PacketId.Server.*;
 import static de.jpx3.intave.module.violation.Violation.ViolationFlags.DISPLAY_IN_ALL_VERBOSE_MODES;
+import static de.jpx3.intave.user.MessageChannel.DEBUG_TELEPORT;
 import static de.jpx3.intave.user.meta.ProtocolMetadata.*;
 
 public final class MovementDispatcher extends Module {
   private static final long PISTON_SNAPSHOT_RETENTION_NANOS = TimeUnit.SECONDS.toNanos(2);
 
-  private Physics physicsCheck;
+	private Physics physicsCheck;
   private TeleportController teleportController;
   private InteractionRaytrace interactionRaytraceCheck;
   private Timer timerCheck;
@@ -175,34 +175,6 @@ public final class MovementDispatcher extends Module {
   public void receiveExternalTeleport(PlayerTeleportEvent event) {
     Player player = event.getPlayer();
     User user = UserRepository.userOf(player);
-    PacketLogging logging = Modules.tracker().packetLogging();
-    PlayerTeleportEvent.TeleportCause cause = event.getCause();
-    if (cause == PlayerTeleportEvent.TeleportCause.NETHER_PORTAL || event.isCancelled()) {
-      logging.logSystemMessage(user, () ->
-        "TELEPORT CORRECTION SKIPPED id=" + Integer.toHexString(System.identityHashCode(event)) +
-          " cause=" + cause + " cancelled=" + event.isCancelled()
-      );
-      return;
-    }
-    Location fromLocation = event.getFrom();
-    Location toLocation = event.getTo();
-    double teleportDistance = toLocation.getWorld() != player.getWorld() ? Double.MAX_VALUE : toLocation.distance(fromLocation);
-//    if (toLocation.getWorld() != player.getWorld() || teleportDistance > 8) {
-//      Location fixedLocation = fixLocation(user, toLocation);
-//      event.setTo(fixedLocation);
-//      logging.logSystemMessage(user, () ->
-//        "TELEPORT CORRECTION APPLIED id=" + Integer.toHexString(System.identityHashCode(event)) +
-//          " distance=" + teleportDistance +
-//          " requested=" + MathHelper.formatPosition(toLocation) +
-//          " corrected=" + MathHelper.formatPosition(fixedLocation)
-//      );
-//    } else {
-      logging.logSystemMessage(user, () ->
-        "TELEPORT CORRECTION NOT_REQUIRED id=" + Integer.toHexString(System.identityHashCode(event)) +
-          " distance=" + teleportDistance +
-          " requested=" + MathHelper.formatPosition(toLocation)
-      );
-//    }
     MovementMetadata movementData = user.meta().movement();
     movementData.artificialFallDistance = 0;
   }
@@ -230,68 +202,6 @@ public final class MovementDispatcher extends Module {
     if (fakePlayer != null) {
       fakePlayer.respawn();
     }
-  }
-
-  @BukkitEventSubscription(priority = EventPriority.MONITOR)
-  public void postShift(PlayerRespawnEvent respawn) {
-    Player player = respawn.getPlayer();
-    User user = UserRepository.userOf(player);
-    Location respawnLocation = respawn.getRespawnLocation().clone();
-//    respawn.setRespawnLocation(fixLocation(user, respawnLocation));
-  }
-
-  private static final int BASE_SHIFTS = 8;
-
-  private Location fixLocation(User user, Location location) {
-    if (location == null) {
-      return null;
-    }
-    boolean inLoadedChunk = VolatileBlockAccess.isInLoadedChunk(
-      location.getWorld(), location.getBlockX(), location.getBlockZ()
-    );
-    if (!inLoadedChunk) {
-      Modules.tracker().packetLogging().logSystemMessage(user, () ->
-        "TELEPORT LOCATION FIX skipped=unloaded_chunk location=" + MathHelper.formatPosition(location)
-      );
-      return location;
-    }
-
-    MovementMetadata movement = user.meta().movement();
-    int baseShifts = BASE_SHIFTS;
-    Location fixedLocation = location.clone();
-    World world = location.getWorld();
-    int collisionShifts = 0;
-    int clearanceShifts = 0;
-
-    // A: move out of existing blocks
-    BoundingBox bb = BoundingBox.fromPosition(user, movement, fixedLocation);
-    boolean initiallyColliding = Collision.unsafePresent(world, user.player(), bb);
-    while (fixedLocation.getY() < WorldHeight.UPPER_WORLD_LIMIT && baseShifts-- > 0 && Collision.unsafePresent(world, user.player(), bb) && Collision.unsafeNonePresent(world, user.player(), bb.offset(0, BASE_SHIFTS * 0.1, 0))) {
-      fixedLocation.add(0, 0.101, 0);
-      collisionShifts++;
-      bb = BoundingBox.fromPosition(user, movement, fixedLocation).grow(0.1);
-    }
-
-    // B: if clear of blocks, move up 0.55 block
-    baseShifts = 5;
-    bb = BoundingBox.fromPosition(user, movement, fixedLocation);
-    while (fixedLocation.getY() < WorldHeight.UPPER_WORLD_LIMIT && baseShifts-- > 0 && Collision.unsafeNonePresent(world, user.player(), bb)) {
-      fixedLocation.add(0, 0.101, 0);
-      clearanceShifts++;
-      bb = BoundingBox.fromPosition(user, movement, fixedLocation).grow(0.1).expand(0.5, 0.45, 0.5);
-    }
-    int finalCollisionShifts = collisionShifts;
-    int finalClearanceShifts = clearanceShifts;
-    boolean finallyColliding = Collision.unsafePresent(world, user.player(), BoundingBox.fromPosition(user, movement, fixedLocation));
-    Modules.tracker().packetLogging().logSystemMessage(user, () ->
-      "TELEPORT LOCATION FIX loaded=true initially_colliding=" + initiallyColliding +
-        " collision_shifts=" + finalCollisionShifts +
-        " clearance_shifts=" + finalClearanceShifts +
-        " finally_colliding=" + finallyColliding +
-        " from=" + MathHelper.formatPosition(location) +
-        " to=" + MathHelper.formatPosition(fixedLocation)
-    );
-    return fixedLocation;
   }
 
   @BukkitEventSubscription
@@ -338,6 +248,7 @@ public final class MovementDispatcher extends Module {
     Player player = event.getPlayer();
     User user = UserRepository.userOf(player);
     MetadataBundle meta = user.meta();
+    meta.movement().replaceRecoveryWithExternalTeleport();
     ViolationMetadata violationLevelData = meta.violationLevel();
     violationLevelData.physicsVelocityVL = 0;
     violationLevelData.physicsVL = Math.max(0, violationLevelData.physicsVL - 10);
@@ -388,8 +299,8 @@ public final class MovementDispatcher extends Module {
 
     User user = UserRepository.userOf(player);
     MetadataBundle meta = user.meta();
+    AttackMetadata attack = meta.attack();
     MovementMetadata movement = meta.movement();
-    AttackMetadata attackData = meta.attack();
     InventoryMetadata inventoryData = meta.inventory();
     ViolationMetadata violationLevelData = meta.violationLevel();
     ConnectionMetadata connectionData = meta.connection();
@@ -400,7 +311,8 @@ public final class MovementDispatcher extends Module {
 	  boolean hasMovement = reader.hasMovement();
     boolean hasRotation = reader.hasRotation();
 
-    if (movement.isInVehicle() && !vehicleMove && hasRotation && !hasMovement) {
+    movement.recoverPendingTeleport();
+    if (!mustRejectMovement(movement) && movement.isInVehicle() && !vehicleMove && hasRotation && !hasMovement) {
       movement.setRotation(reader.yaw(), reader.pitch());
       logging.logSystemMessage(user, () -> "MOVEMENT IGNORED: Vehicle rotation only");
       reader.release();
@@ -416,7 +328,7 @@ public final class MovementDispatcher extends Module {
     }
 
     boolean clientVehicleMovement = MinecraftVersions.VER1_9_0.atOrAbove() && protocol.combatUpdate();
-    if (movement.isInRidingVehicle() && !vehicleMove && clientVehicleMovement && !movement.awaitTeleport) {
+    if (movement.isInRidingVehicle() && !vehicleMove && clientVehicleMovement) {
       movement.dismountRidingEntity("Client vehicle movement");
     }
 
@@ -431,14 +343,15 @@ public final class MovementDispatcher extends Module {
       return;
     }
 
+    boolean hasBypass = user.trustFactor().atLeast(TrustFactor.BYPASS);
     if (hasMovement || movement.isInVehicle() || movement.inRespawnScreen) {
       movement.lastPositionUpdate = 0;
-    } else if (++movement.lastPositionUpdate > 20 && FaultKicks.MISSING_POSITION_UPDATE && !user.justJoined() && !user.trustFactor().atLeast(TrustFactor.BYPASS)) {
+    } else if (++movement.lastPositionUpdate > 20 && FaultKicks.MISSING_POSITION_UPDATE && !user.justJoined() && !hasBypass) {
       user.kick("Missing position update " + movement.vehicle());
     }
 
     // fix only works for 1.8
-    if (movement.sprinting && movement.isSneaking() && movement.lastSneaking && !protocol.combatUpdate() && movement.acceptSneakFaults && FaultKicks.INVALID_PLAYER_ACTION && !user.justJoined() && !user.trustFactor().atLeast(TrustFactor.BYPASS)) {
+    if (movement.sprinting && movement.isSneaking() && movement.lastSneaking && !protocol.combatUpdate() && movement.acceptSneakFaults && FaultKicks.INVALID_PLAYER_ACTION && !user.justJoined() && !hasBypass) {
       movement.acceptSneakFaults = false;
       user.refreshSprintState(unused -> {
         movement.sprintSneakFaults++;
@@ -449,32 +362,52 @@ public final class MovementDispatcher extends Module {
       }
     }
 
+    if (reader.couldBeTeleport() && teleportController.receiveMove(event, reader)) {
+      movement.isTeleportConfirmationPacket = true;
+      logging.logSystemMessage(user, () -> "MOVEMENT IGNORED: Move was teleport");
+      reader.release();
+      return;
+    }
+
+    boolean processThisPacket = teleportController.processMovementPackets(user);
+    boolean forwardToServer = teleportController.forwardMovementPackets(user);
+
+    if (!processThisPacket) {
+      // Confirmation matching above must remain reachable while movement is blocked.
+      // Keep retries alive here as well when feedback enforcement is disabled.
+      if (--movement.teleportResendCountdown <= 0) {
+        teleportController.onResendTimeout(user);
+      }
+      if (DEBUG_MOVEMENT_IGNORE) {
+        System.out.println("[Intave] Teleport movement ignore " + movement.awaitTeleport + " " + movement.awaitOutgoingTeleport);
+      }
+      if (user.receives(DEBUG_TELEPORT)) {
+        ActionBar.sendActionBar(user.player(), "Ignoring movement packet. Q: " + movement.pendingTeleports.get().size());
+      }
+      event.setCancelled(true);
+      movement.dropPostTickMotionProcessing = true;
+      logging.logSystemMessage(user, () -> "MOVEMENT IGNORED: Teleport movement ignore " + movement.awaitTeleport + " " + movement.awaitOutgoingTeleport);
+      reader.release();
+      return;
+    }
+
     // see MultiPlayerGameMode#useItem
-    if (protocol.useItemMovementPacket() && !movement.awaitTeleport
+    if (protocol.useItemMovementPacket()
       && packet.getType() == PacketType.Play.Client.POSITION_LOOK
     ) {
-      double positionX = reader.positionX();
-      double positionY = reader.positionY();
-      double positionZ = reader.positionZ();
-      double motionX = positionX - movement.verifiedLastPositionX;
-      double motionY = positionY - movement.verifiedLastPositionY;
-      double motionZ = positionZ - movement.verifiedLastPositionZ;
-      double distance = MathHelper.hypot3d(motionX, motionY, motionZ);
-
+      Position position = reader.position();
+      if (position == null) {
+        user.kick("Missing position in movement packet");
+        return;
+      }
+      double distance = position.distance(movement.lastPosition());
       if (distance < 0.00001) {
         movement.dropPostTickMotionProcessing = true;
-        Float yaw = packet.getFloat().read(0);
-        Float pitch = packet.getFloat().read(1);
-        if (DEBUG_MOVEMENT_IGNORE) {
-          double yawDifference = MathHelper.noAbsDistanceInDegrees(movement.lastRotationYaw, yaw);
-          double pitchDifference = MathHelper.noAbsDistanceInDegrees(movement.lastRotationPitch, pitch);
-          System.out.println("[Intave] Click movement ignore distance: " + distance + " yaw: " + yawDifference + " pitch: " + pitchDifference);
-        }
         logging.logSystemMessage(user, () -> "MOVEMENT IGNORED: Click movement ignore distance: " + distance);
-
         if (!MinecraftVersions.VER1_9_0.atOrAbove()) {
           event.setCancelled(true);
         } else {
+          // to fix nofall bypasses
           reader.setPosition(movement.verifiedLastPosition());
         }
         reader.release();
@@ -499,8 +432,6 @@ public final class MovementDispatcher extends Module {
       logging.logSystemMessage(user, () -> "MOTION LOGIC: Received motion: " + movement.sentOffsetMotion());
     }
 
-    teleportController.receiveMovement(event);
-
     if (IntaveControl.DEBUG_COLLISION_BOXES || user.receives(MessageChannel.DEBUG_COLLISIONS)) {
       BoundingBox box = movement.boundingBox().grow(0.1);
       BlockShape shape = Collision.shape(user, movement, box);
@@ -513,27 +444,32 @@ public final class MovementDispatcher extends Module {
       }
     }
 
-    if (movement.awaitTeleport || movement.awaitOutgoingTeleport) {
-      if (DEBUG_MOVEMENT_IGNORE) {
-        System.out.println("[Intave] Teleport movement ignore " + movement.awaitTeleport + " " + movement.awaitOutgoingTeleport);
-      }
+    if (!forwardToServer) {
+      logging.logSystemMessage(user, () -> "MOVEMENT IGNORED: Teleport forward ignore " + movement.awaitTeleport + " " + movement.awaitOutgoingTeleport);
       event.setCancelled(true);
-      movement.dropPostTickMotionProcessing = true;
-      logging.logSystemMessage(user, () -> "MOVEMENT IGNORED: Teleport movement ignore " + movement.awaitTeleport + " " + movement.awaitOutgoingTeleport);
-      reader.release();
-      return;
+      // Server delivery is withheld, but this is still an ordinary client tick.
+      // Its post-tick motion and position are the base for a relative teleport.
+      movement.movementWithheldForTeleport = true;
+
+      int teleportResendCountdown = movement.teleportResendCountdown;
+      movement.teleportResendCountdown = Math.max(0, teleportResendCountdown - 1);
+      if (teleportResendCountdown <= 0) {
+        teleportController.onResendTimeout(user);
+      }
     }
 
     double distance = movement.verifiedLastPosition().distance(movement.position());
 
     if (distance > 50) {
+      movement.invalidMovement = true;
+      movement.recoverPendingTeleport();
       if (DEBUG_MOVEMENT_IGNORE) {
         System.out.println("[Intave] Distance movement ignore: " + distance);
       }
       logging.logSystemMessage(user, () -> "MOVEMENT REJECTED: Distance over limit: " + distance);
       movement.dropPostTickMotionProcessing = true;
       event.setCancelled(true);
-      Modules.mitigate().movement().emulationSetBack(player, movement.mutableBaseMotionCopy(), 10, false);
+
       String message = "sent unsafe position";
       String details = "moved " + MathHelper.formatDouble(distance, 2) + " blocks";
       Map<String, String> granulars = new HashMap<>();
@@ -579,16 +515,16 @@ public final class MovementDispatcher extends Module {
     inventoryData.activatedItemThisTick = false;
     inventoryData.deactivatedItemThisTick = false;
 
-    if (violationLevelData.isInActiveTeleportBundle) {
-      if (DEBUG_MOVEMENT_IGNORE) {
-        System.out.println("[Intave] Teleport bundle movement ignore");
-      }
-      logging.logSystemMessage(user, () -> "MOVEMENT IGNORED: Teleport bundle movement ignore");
-      movement.dropPostTickMotionProcessing = true;
-      event.setCancelled(true);
-      reader.release();
-      return;
-    }
+//    if (violationLevelData.isInActiveTeleportBundle) {
+//      if (DEBUG_MOVEMENT_IGNORE) {
+//        System.out.println("[Intave] Teleport bundle movement ignore");
+//      }
+//      logging.logSystemMessage(user, () -> "MOVEMENT IGNORED: Teleport bundle movement ignore");
+//      movement.dropPostTickMotionProcessing = true;
+//      event.setCancelled(true);
+//      reader.release();
+//      return;
+//    }
 
     if (!movement.isTeleportConfirmationPacket &&
       movement.canResetMotion &&
@@ -606,6 +542,12 @@ public final class MovementDispatcher extends Module {
 
     if (!movement.isTeleportConfirmationPacket) {
       timerCheck.receiveMovement(event);
+      movement.recoverPendingTeleport();
+      if (movement.inRecovery) {
+        event.setCancelled(true);
+        reader.release();
+        return;
+      }
       if (interactionRaytraceCheck.receiveMovement(event)) {
         movement.compileSpecialBlocks();
         movement.recheckWebStateFromLastTick();
@@ -619,6 +561,7 @@ public final class MovementDispatcher extends Module {
       }
 
       physicsCheck.receiveMovement(user, hasMovement, hasRotation);
+
       if (!hasMovement && !hasRotation && !movement.treatThisFlyPacketAsMovePacket) {
         logging.logSystemMessage(user, () -> "MOVEMENT IGNORED: No movement or rotation");
       }
@@ -634,7 +577,7 @@ public final class MovementDispatcher extends Module {
         movement.onGround = clientOnGround;
       }
 
-      attackData.updatePerfectRotation();
+      attack.updatePerfectRotation();
 
       updatePotionEffects(user);
       movement.canResetMotion = false;
@@ -645,12 +588,10 @@ public final class MovementDispatcher extends Module {
       movement.canResetMotion = true;
     }
 
-    // flag & setback -> remove packet
-    if (movement.invalidMovement && violationLevelData.isInActiveTeleportBundle) {
-      if (!movement.awaitOutgoingTeleport) {
-        movement.outgoingTeleportCountdown = 5;
-      }
-      movement.awaitOutgoingTeleport = true; // awaiting next teleport
+    // Invalid movement must never reach the server, even before a correction is sent.
+    movement.recoverPendingTeleport();
+    if (mustRejectMovement(movement)) {
+      movement.dropPostTickMotionProcessing = true;
       event.setCancelled(true);
     }
 
@@ -750,7 +691,7 @@ public final class MovementDispatcher extends Module {
     boolean hasRotation = reader.hasRotation();
     boolean claimsToBeOnGround = vehicleMove ? player.isOnGround() : reader.onGround();
 
-    if (player.isDead() || movement.awaitTeleport) {
+    if (player.isDead()) {
       return;
     }
 
@@ -762,7 +703,7 @@ public final class MovementDispatcher extends Module {
       return;
     }
 
-    if (!vehicleMove && !movement.isSleeping() && !movement.awaitTeleport && !movement.awaitOutgoingTeleport && !movement.invalidMovement && !movement.dropPostTickMotionProcessing) {
+    if (!vehicleMove && !movement.isSleeping() && !movement.invalidMovement && !movement.dropPostTickMotionProcessing) {
       if (claimsToBeOnGround != movement.onGround) {
         double requiredFallDistance = Collision.present(user, movement, movement.boundingBox().grow(0.1, 0.1, 0.1)) ? 0.5 : 0.1;
         boolean shulkerInteraction = movement.shulkerXToleranceRemaining > 0 || movement.shulkerYToleranceRemaining > 0 || movement.shulkerZToleranceRemaining > 0;
@@ -785,7 +726,7 @@ public final class MovementDispatcher extends Module {
       }
     }
 
-    if (!cancellable.isCancelled() && !movement.isTeleportConfirmationPacket && !movement.dropPostTickMotionProcessing) {
+    if (canCommitMovement(movement, cancellable.isCancelled())) {
       physicsCheck.endMovement(user, hasMovement, hasRotation);
       movement.lastOnGround = movement.onGround;
       movement.setVerifiedLastPosition(
@@ -968,11 +909,6 @@ public final class MovementDispatcher extends Module {
       }
       MetadataBundle meta = user.meta();
       MovementMetadata movementData = meta.movement();
-      if (movementData.willReceiveSetbackVelocity && motion.length() < 0.001) {
-        movementData.willReceiveSetbackVelocity = false;
-        reader.setMotion(movementData.setbackOverrideVelocity);
-        return;
-      }
       /*
         Some players abuse "velocity buffering", giving them the ability to jump up to 40 - 50 blocks (provided they have external help).
         This fix is an attempt to decrease this bugs effectiveness, somewhat working
@@ -999,7 +935,6 @@ public final class MovementDispatcher extends Module {
       }
 
       movementData.pendingVelocityPackets.incrementAndGet();
-      movementData.emulationVelocity = motion.copy();
       if (movementData.sneaking) {
         movementData.sneakPatchVelocity = motion.copy();
       }
@@ -1026,8 +961,6 @@ public final class MovementDispatcher extends Module {
           if (myMotionSetUpdate != null) {
             myMotionSetUpdate.canNotRunAfterThisTick(movementData);
           }
-          // legacy behavior
-          receiveVelocity(player, finalVelocity);
           movementData.pendingVelocityPackets.decrementAndGet();
         }
       );
@@ -1067,28 +1000,6 @@ public final class MovementDispatcher extends Module {
         }
       );
     }
-  }
-
-  private void receiveVelocity(Player player, Motion velocity) {
-    User user = UserRepository.userOf(player);
-    MetadataBundle meta = user.meta();
-    ViolationMetadata violationLevelData = meta.violationLevel();
-    MovementMetadata movementData = meta.movement();
-    if (!violationLevelData.isInActiveTeleportBundle) {
-      movementData.baseMotionXBeforeVelocity = movementData.baseMotionX;
-      movementData.baseMotionYBeforeVelocity = movementData.baseMotionY;
-      movementData.baseMotionZBeforeVelocity = movementData.baseMotionZ;
-//      movementData.setBaseMotion(velocity);
-      movementData.lastVelocity = velocity.copy();
-      if (!movementData.willReceiveSetbackVelocity && !movementData.willReceiveFinalSetbackVelocity) {
-        movementData.activeTick(EXTERNAL_VELOCITY);
-      }
-      movementData.willReceiveSetbackVelocity = false;
-      movementData.willReceiveFinalSetbackVelocity = false;
-      PacketLogging logging = Modules.tracker().packetLogging();
-      logging.logSystemMessage(user, () -> "MOTION LOGIC: Velocity base motion set to " + MathHelper.formatMotion(velocity));
-    }
-    movementData.activeTick(VELOCITY);
   }
 
   private static final Set<Material> SHULKER_BOX_MATERIALS = MaterialSearch.materialsThatContain("SHULKER_BOX");
@@ -1483,5 +1394,19 @@ public final class MovementDispatcher extends Module {
 
   private boolean allowSprinting(User user) {
     return !user.meta().inventory().inventoryOpen();
+  }
+
+  static boolean mustRejectMovement(MovementMetadata movement) {
+    return movement.inRecovery || movement.invalidMovement;
+  }
+
+  static boolean canCommitMovement(MovementMetadata movement, boolean cancelled) {
+    return !mustRejectMovement(movement)
+      && !movement.isTeleportConfirmationPacket && !movement.dropPostTickMotionProcessing
+      && (!cancelled || movement.movementWithheldForTeleport);
+  }
+
+  public TeleportController teleports() {
+    return teleportController;
   }
 }

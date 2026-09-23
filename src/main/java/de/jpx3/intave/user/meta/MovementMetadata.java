@@ -37,13 +37,13 @@ import de.jpx3.intave.executor.Synchronizer;
 import de.jpx3.intave.math.MathHelper;
 import de.jpx3.intave.module.Modules;
 import de.jpx3.intave.module.tracker.entity.Entity;
-import de.jpx3.intave.packet.Relative;
 import de.jpx3.intave.player.Effects;
 import de.jpx3.intave.player.attribute.Attribute;
 import de.jpx3.intave.player.attribute.AttributeModifier;
 import de.jpx3.intave.player.collider.complex.SimulationResult;
 import de.jpx3.intave.share.*;
 import de.jpx3.intave.share.Rotation;
+import de.jpx3.intave.share.opt.ElasticRingDeque;
 import de.jpx3.intave.user.MessageChannel;
 import de.jpx3.intave.user.User;
 import de.jpx3.intave.user.UserRepository;
@@ -58,6 +58,7 @@ import org.jetbrains.annotations.NotNull;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.atomic.LongAdder;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
@@ -106,9 +107,7 @@ public final class MovementMetadata implements SimulationEnvironment {
   public long invalidVehiclePositionTicks = 0;
   // Timestamps
   public long lastTimeSneaking, lastTimeJumped, lastRotation;
-  public Motion emulationVelocity;
   public Motion sneakPatchVelocity;
-  public Motion setbackOverrideVelocity = Motion.newEmpty();
   public Motion lastVelocity = Motion.newEmpty();
   public boolean canResetMotion;
   public float frictionMultiplier = 0.09998f;
@@ -154,26 +153,29 @@ public final class MovementMetadata implements SimulationEnvironment {
   public boolean currentlyInBlock;
   // Entity collision
   public boolean enforceBoatStep;
-  public volatile Location nearestBoatLocation = null;
+  public volatile Position nearestBoatPosition = null;
   public float boatGlide;
   public double waterLevel;
   public BoatSimulator.Status boatStatus = BoatSimulator.Status.ON_LAND,
     previousBoatStatus = BoatSimulator.Status.ON_LAND;
   public boolean isTeleportConfirmationPacket;
   public boolean dropPostTickMotionProcessing;
-  public boolean willReceiveSetbackVelocity;
-  public boolean willReceiveFinalSetbackVelocity;
-  public volatile int teleportId;
-  public volatile long teleportGeneration;
-  public volatile boolean awaitTeleport = false, expectTeleport = false, awaitOutgoingTeleport = false;
-  public volatile boolean expectTeleportWithRotation = false;
-  public volatile boolean transactionTeleportAllow = false;
-  public boolean awaitClickMovementSkip;
-  public Location teleportLocation;
-  public Motion teleportMotion = new Motion();
-  public Set<Relative> teleportRelatives = EnumSet.noneOf(Relative.class);
-  public int teleportResendCountdown = 20;
+  public boolean movementWithheldForTeleport;
+
+  public volatile boolean awaitTeleport = false, awaitOutgoingTeleport = false;
   public int outgoingTeleportCountdown = 5;
+  public boolean awaitClickMovementSkip;
+  public volatile int teleportResendCountdown = Integer.MAX_VALUE;
+
+  public AtomicReference<Deque<Teleport>> pendingTeleports = new AtomicReference<>(new ElasticRingDeque<>(16));
+  public volatile boolean inRecovery;
+  public volatile boolean sentTeleportIdBefore = false;
+  public volatile int lastTeleportAcceptId = -1;
+  public volatile long teleportSequence = 0;
+  public final ReentrantLock teleportLock = new ReentrantLock();
+  private long recoveryGeneration;
+  private long recoveryFinalTeleportSequence = Long.MAX_VALUE;
+
   public long lastSimulationSprintResetAttempt;
   // States if an external entity push onto the player is estimated
   public boolean pushedByEntity;
@@ -220,7 +222,7 @@ public final class MovementMetadata implements SimulationEnvironment {
   public double criticalEnterPosX, criticalEnterPosY, criticalEnterPosZ;
   public final RateLimiter criticalTeleportRateLimiter = new RateLimiter(10, 2, TimeUnit.SECONDS);
   public final RateLimiter simulationRateLimiter = new RateLimiter(100_000, 1_000, TimeUnit.SECONDS);
-  private volatile Location verifiedLocation;
+  private volatile Position verifiedPosition;
   public volatile Input input = Input.none();
   public volatile Input lastInput = Input.none();
   private @NotNull WorldBorder worldBorder = WorldBorder.createDefault();
@@ -251,8 +253,6 @@ public final class MovementMetadata implements SimulationEnvironment {
   public LongAdder activeTicks = new LongAdder();
   public LongAdder passiveTicks = new LongAdder();
 
-  public SimulationEnvironment beforePreviousTickEnvironment;
-
   public MovementMetadata(Player player, User user) {
     this.player = player;
     this.user = user;
@@ -281,8 +281,6 @@ public final class MovementMetadata implements SimulationEnvironment {
       Location location = player == null ? new Location(null, verifiedLastPositionX, verifiedLastPositionY, verifiedLastPositionZ) : player.getLocation();
       boundingBox = BoundingBox.fromPosition(user, this, location.getX(), location.getY(), location.getZ());
       boundingBoxSetup = true;
-      // just a default non-null value
-      teleportLocation = location;
     }
   }
 
@@ -298,7 +296,7 @@ public final class MovementMetadata implements SimulationEnvironment {
       location = player.getLocation();
       artificialFallDistance = player.getFallDistance();
     }
-    verifiedLocation = location.clone();
+    verifiedPosition = Position.of(location);
     positionX = location.getX();
     positionY = location.getY();
     positionZ = location.getZ();
@@ -517,13 +515,13 @@ public final class MovementMetadata implements SimulationEnvironment {
   }
 
   public boolean collidedWithBoat() {
-    return nearestBoatLocation != null && distanceToVerifiedLocation(nearestBoatLocation) < 2;
+    return nearestBoatPosition != null && distanceToVerifiedPosition(nearestBoatPosition) < 2;
   }
 
-  public double distanceToVerifiedLocation(Location location) {
-    double xDiff = Math.abs(verifiedLastPositionX - location.getX());
-    double yDiff = Math.abs(verifiedLastPositionY - location.getY());
-    double zDiff = Math.abs(verifiedLastPositionZ - location.getZ());
+  public double distanceToVerifiedPosition(Position position) {
+    double xDiff = Math.abs(verifiedLastPositionX - position.getX());
+    double yDiff = Math.abs(verifiedLastPositionY - position.getY());
+    double zDiff = Math.abs(verifiedLastPositionZ - position.getZ());
     return Math.sqrt(xDiff * xDiff + yDiff * yDiff + zDiff * zDiff);
   }
 
@@ -896,6 +894,7 @@ public final class MovementMetadata implements SimulationEnvironment {
     ignoredAttackReduce = false;
     isTeleportConfirmationPacket = false;
     dropPostTickMotionProcessing = false;
+    movementWithheldForTeleport = false;
     physicsUnpredictableVelocityExpected = false;
     lastSprinting = sprinting;
     lastSneaking = sneaking;
@@ -1098,9 +1097,8 @@ public final class MovementMetadata implements SimulationEnvironment {
     return vehicle;
   }
 
-  @Deprecated
-  public Location verifiedLocation() {
-    return verifiedLocation;
+  public Position verifiedPosition() {
+    return verifiedPosition;
   }
 
   public double offsetMotionX() {
@@ -1696,8 +1694,8 @@ public final class MovementMetadata implements SimulationEnvironment {
 	  this.worldBorder = worldBorder;
   }
 
-  public void setVerifiedLocation(Location verifiedLocation) {
-    this.verifiedLocation = verifiedLocation;
+  public void setVerifiedPosition(Position verifiedPosition) {
+    this.verifiedPosition = Position.of(verifiedPosition);
   }
 
   public double estimatedAttachMovement() {
@@ -1755,9 +1753,10 @@ public final class MovementMetadata implements SimulationEnvironment {
       System.out.println("Dismounting " + vehicle.entityName() + " " + reason);
       Thread.dumpStack();
     }
-    setVerifiedLocation(player.getLocation());
+    setVerifiedPosition(Position.of(player.getLocation()));
     if (positionReset) {
       Synchronizer.synchronize(user, () -> {
+        if (inRecovery || !pendingTeleports.get().isEmpty()) return;
         // player.getLocation() is assumed to be correct
         Location target = player.getLocation();
         Modules.tracker().packetLogging().logSystemMessage(user, () ->
@@ -1794,5 +1793,80 @@ public final class MovementMetadata implements SimulationEnvironment {
   @Override
   public SimulationEnvironment immutableView() {
     return unmodifiableView;
+  }
+
+  public long beginRecovery() {
+    teleportLock.lock();
+    try {
+      if (inRecovery) {
+        return -1;
+      }
+      inRecovery = true;
+      dropPostTickMotionProcessing = true;
+      recoveryFinalTeleportSequence = Long.MAX_VALUE;
+      return ++recoveryGeneration;
+    } finally {
+      teleportLock.unlock();
+    }
+  }
+
+  public void recoverPendingTeleport() {
+    teleportLock.lock();
+    try {
+      Teleport latest = pendingTeleports.get().peekLast();
+      if (!invalidMovement || inRecovery || latest == null) return;
+      beginRecovery();
+      recoveryFinalTeleportSequence = latest.uniqueId();
+    } finally {
+      teleportLock.unlock();
+    }
+  }
+
+  public boolean isRecovering(long generation) {
+    teleportLock.lock();
+    try {
+      return inRecovery && recoveryGeneration == generation &&
+        recoveryFinalTeleportSequence == Long.MAX_VALUE;
+    } finally {
+      teleportLock.unlock();
+    }
+  }
+
+  public void finishRecoveryOnNextTeleport(long generation) {
+    teleportLock.lock();
+    try {
+      if (inRecovery && recoveryGeneration == generation) {
+        recoveryFinalTeleportSequence = teleportSequence;
+      }
+    } finally {
+      teleportLock.unlock();
+    }
+  }
+
+  public void replaceRecoveryWithExternalTeleport() {
+    teleportLock.lock();
+    try {
+      if (inRecovery) {
+        recoveryFinalTeleportSequence = teleportSequence;
+      }
+    } finally {
+      teleportLock.unlock();
+    }
+  }
+
+  public boolean completeRecovery(Teleport teleport) {
+    teleportLock.lock();
+    try {
+      if (!inRecovery || !teleport.wasAccepted()
+        || teleport.uniqueId() != recoveryFinalTeleportSequence
+        || !pendingTeleports.get().isEmpty()) {
+        return false;
+      }
+      inRecovery = false;
+      recoveryFinalTeleportSequence = Long.MAX_VALUE;
+      return true;
+    } finally {
+      teleportLock.unlock();
+    }
   }
 }

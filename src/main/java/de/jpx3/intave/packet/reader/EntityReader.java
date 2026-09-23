@@ -12,6 +12,7 @@
 package de.jpx3.intave.packet.reader;
 
 import com.comphenix.protocol.events.PacketEvent;
+import com.comphenix.protocol.reflect.StructureModifier;
 import de.jpx3.intave.entity.EntityLookup;
 import de.jpx3.intave.user.User;
 import org.bukkit.World;
@@ -26,6 +27,11 @@ import java.util.function.Consumer;
 public class EntityReader extends AbstractPacketReader implements EntityIterable {
   public int entityId() {
     return packet().getIntegers().read(0);
+  }
+
+  public void setEntityId(int entityId) {
+    StructureModifier<Integer> integers = packet().getIntegers();
+    integers.writeSafely(0, entityId);
   }
 
   public @Nullable Entity entityBy(PacketEvent event) {

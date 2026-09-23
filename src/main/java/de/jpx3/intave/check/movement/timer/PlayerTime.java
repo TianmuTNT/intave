@@ -30,7 +30,6 @@ import de.jpx3.intave.module.tracker.player.AbilityTracker;
 import de.jpx3.intave.module.violation.Violation;
 import de.jpx3.intave.module.violation.ViolationContext;
 import de.jpx3.intave.packet.PacketSender;
-import de.jpx3.intave.share.Motion;
 import de.jpx3.intave.user.User;
 import de.jpx3.intave.user.UserRepository;
 import de.jpx3.intave.user.meta.*;
@@ -145,8 +144,6 @@ public class PlayerTime extends MetaCheckPart<Timer, PlayerTime.PlayerTimeMeta> 
 
     boolean bad = diff > experimentalLimit + 25_000_000;
 
-//    player.sendMessage((bad ? ChatColor.RED : ChatColor.GRAY) + " " + (diff / (50 * 1_000_000f)) + " / " + (experimentalLimit / (50 * 1_000_000f)));
-
     int limit = 40_000_000;
     if ((diff > limit) && !user.meta().movement().isInVehicle()) {
       double displayValue = diff / (50 * 1_000_000f);
@@ -164,7 +161,7 @@ public class PlayerTime extends MetaCheckPart<Timer, PlayerTime.PlayerTimeMeta> 
         checkMeta.lastTimerFlag = System.currentTimeMillis();
         movementData.invalidMovement = true;
         statisticApply(user, CheckStatistics::increaseFails);
-        Modules.mitigate().movement().emulationSetBack(player, Motion.newEmpty(), 3, 2, false);
+        user.teleport(movementData.verifiedLastPosition());
         if (violationContext.violationLevelAfter() > 50) {
           user.nerfPermanently(AttackNerfStrategy.DMG_HIGH, "timer");
         }
@@ -188,8 +185,8 @@ public class PlayerTime extends MetaCheckPart<Timer, PlayerTime.PlayerTimeMeta> 
         .withVL(0)
         .build();
 	    Modules.violationProcessor().processViolation(violation);
-	    Motion setback = Motion.newEmpty();
-      Modules.mitigate().movement().emulationSetBack(player, setback, 1, 2, false);
+
+
     }
     statisticApply(user, CheckStatistics::increasePasses);
   }

@@ -228,6 +228,20 @@ public final class Motion {
 		return new Motion(-this.motionX, -this.motionY, -this.motionZ);
 	}
 
+	public Motion rotated(Rotation rotation) {
+		double pitch = Math.toRadians(rotation.pitch());
+		double pitchCos = Math.cos(pitch);
+		double pitchSin = Math.sin(pitch);
+		double rotatedY = motionY * pitchCos - motionZ * pitchSin;
+		double rotatedZ = motionY * pitchSin + motionZ * pitchCos;
+		double yaw = Math.toRadians(rotation.yaw());
+		double yawCos = Math.cos(yaw);
+		double yawSin = Math.sin(yaw);
+		double rotatedX = motionX * yawCos + rotatedZ * yawSin;
+				   rotatedZ = -motionX * yawSin + rotatedZ * yawCos;
+		return new Motion(rotatedX, rotatedY, rotatedZ);
+	}
+
 	public RawVector3d toRawVector3d() {
 		return new RawVector3d(motionX, motionY, motionZ);
 	}

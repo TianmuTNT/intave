@@ -36,9 +36,11 @@ import de.jpx3.intave.module.mitigate.AttackNerfStrategy;
 import de.jpx3.intave.module.violation.placeholder.Placeholders;
 import de.jpx3.intave.module.violation.placeholder.PlayerContext;
 import de.jpx3.intave.module.violation.placeholder.UserContext;
+import de.jpx3.intave.packet.Relative;
 import de.jpx3.intave.player.collider.complex.Collider;
 import de.jpx3.intave.player.collider.simple.SimpleCollider;
 import de.jpx3.intave.report.Report;
+import de.jpx3.intave.share.*;
 import de.jpx3.intave.trustfactor.TrustFactorConfiguration;
 import de.jpx3.intave.user.meta.CheckCustomMetadata;
 import de.jpx3.intave.user.meta.MetadataBundle;
@@ -48,6 +50,7 @@ import org.bukkit.Material;
 import org.bukkit.entity.Player;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.function.Function;
@@ -583,6 +586,31 @@ public interface User {
    * Send a message to the player, without localization
    */
   void sendMessage(String message);
+
+  default void teleport(Position position) {
+    teleport(
+      PositionMoveRotation.withoutMotion(position, Rotation.zero()),
+      Relative.RELATIVE_ROTATION
+    );
+  }
+
+  default void teleport(Position position, Motion motion) {
+    teleport(
+      PositionMoveRotation.withoutRotation(position, motion),
+      Relative.RELATIVE_ROTATION
+    );
+  }
+
+  default void teleportRelative(Position deltaPosition) {
+    teleport(
+      PositionMoveRotation.noMotionRelativePosition(deltaPosition),
+      Relative.RELATIVE_POSITION_AND_ROTATION
+    );
+  }
+
+  void teleport(PositionMoveRotation change, Set<Relative> relativeSet);
+
+  void sendVelocity(Motion motion);
 
   /**
    * Unregister a user

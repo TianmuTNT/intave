@@ -37,6 +37,7 @@ import de.jpx3.intave.entity.size.HitboxSize;
 import de.jpx3.intave.executor.Synchronizer;
 import de.jpx3.intave.module.Modules;
 import de.jpx3.intave.module.actionbar.DisplayType;
+import de.jpx3.intave.module.dispatch.MovementDispatcher;
 import de.jpx3.intave.module.feedback.EmptyFeedbackCallback;
 import de.jpx3.intave.module.feedback.FeedbackObserver;
 import de.jpx3.intave.module.feedback.FeedbackSender;
@@ -45,12 +46,17 @@ import de.jpx3.intave.module.mitigate.HurttimeModifier;
 import de.jpx3.intave.module.violation.placeholder.PlayerContext;
 import de.jpx3.intave.module.violation.placeholder.UserContext;
 import de.jpx3.intave.packet.PacketSender;
+import de.jpx3.intave.packet.Relative;
+import de.jpx3.intave.packet.reader.EntityVelocityReader;
+import de.jpx3.intave.packet.reader.PacketReaders;
 import de.jpx3.intave.player.FaultKicks;
 import de.jpx3.intave.player.collider.Colliders;
 import de.jpx3.intave.player.collider.complex.Collider;
 import de.jpx3.intave.player.collider.simple.SimpleCollider;
 import de.jpx3.intave.player.fake.FakePlayer;
 import de.jpx3.intave.reflect.access.ReflectiveHandleAccess;
+import de.jpx3.intave.share.Motion;
+import de.jpx3.intave.share.PositionMoveRotation;
 import de.jpx3.intave.user.meta.CheckCustomMetadata;
 import de.jpx3.intave.user.meta.ConnectionMetadata;
 import de.jpx3.intave.user.meta.MetadataBundle;
@@ -65,6 +71,7 @@ import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.entity.Player;
+import org.bukkit.util.Vector;
 
 import java.lang.ref.Reference;
 import java.lang.ref.SoftReference;
@@ -571,6 +578,23 @@ final class PlayerUser implements User {
         player.sendMessage(message);
       }
     });
+  }
+
+  @Override
+  public void teleport(PositionMoveRotation change, Set<Relative> relativeSet) {
+    Modules.find(MovementDispatcher.class).teleports().teleport(this, change, relativeSet);
+  }
+
+  @Override
+  public void sendVelocity(Motion motion) {
+    PacketContainer packet = ProtocolLibrary.getProtocolManager().createPacket(
+      PacketType.Play.Server.ENTITY_VELOCITY
+    );
+    try(EntityVelocityReader reader = PacketReaders.readerOf(packet)) {
+      reader.setEntityId(player().getEntityId());
+      reader.setMotion(motion);
+    }
+    PacketSender.sendServerPacket(player(), packet);
   }
 
   @Override

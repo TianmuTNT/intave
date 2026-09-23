@@ -105,6 +105,7 @@ public final class DesyncWatchdog extends Module {
         if (System.currentTimeMillis() - lastActionIssued > 10_000) {
           lastActionIssued = System.currentTimeMillis();
           Synchronizer.synchronize(user, () -> {
+            if (teleportPending(user) || user.meta().movement().inRecovery) return;
             Player player = user.player();
             Location location = player.getLocation().clone();
             while (BlockTypeAccess.typeAccess(location.getBlock(), player) != Material.AIR) {
@@ -138,7 +139,7 @@ public final class DesyncWatchdog extends Module {
   }
 
   static boolean teleportPending(MovementMetadata movement) {
-    return movement.awaitTeleport || movement.awaitOutgoingTeleport;
+    return !movement.pendingTeleports.get().isEmpty();
   }
 
   public static class PositionBundle {

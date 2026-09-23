@@ -71,7 +71,10 @@ import de.jpx3.intave.player.collider.simple.SimpleColliderResult;
 import de.jpx3.intave.report.PhysicsReport;
 import de.jpx3.intave.share.BoundingBox;
 import de.jpx3.intave.share.Motion;
+import de.jpx3.intave.share.MovementCorrection;
 import de.jpx3.intave.share.Position;
+import de.jpx3.intave.share.PositionMoveRotation;
+import de.jpx3.intave.module.dispatch.MovementDispatcher;
 import de.jpx3.intave.user.MessageChannel;
 import de.jpx3.intave.user.User;
 import de.jpx3.intave.user.UserRepository;
@@ -671,8 +674,8 @@ public final class Physics extends Check {
       violationLevelData.physicsVL -= 0.012;
     }
 
-    Location verifiedLocation = movementData.verifiedLocation();
-    BoundingBox verifiedBoundingBox = BoundingBox.fromPosition(user, movementData, verifiedLocation);
+    Position verifiedPosition = movementData.verifiedLastPosition();
+    BoundingBox verifiedBoundingBox = BoundingBox.fromPosition(user, movementData, verifiedPosition);
     BoundingBox currentBoundingBox = BoundingBox.fromPosition(user, movementData, receivedPositionX, receivedPositionY, receivedPositionZ);
 
     boolean boundingBoxIntersectionLast = Collision.present(user, movementData, verifiedBoundingBox);
@@ -709,8 +712,8 @@ public final class Physics extends Check {
         Violation violation = Violation.builderFor(Physics.class)
           .forPlayer(player).withMessage(message).withDetails(details).withVL(0).build();
         Modules.violationProcessor().processViolation(violation);
-        Motion emulationMotion = new Motion(predictedOffsetX, predictedOffsetY, predictedOffsetZ);
-        Modules.mitigate().movement().emulationSetBack(player, emulationMotion, 2, true);
+        Modules.find(MovementDispatcher.class).teleports().movementCorrection(user,
+          PositionMoveRotation.withoutRotation(verifiedPosition, Motion.newEmpty()));
       }
     }
 
@@ -718,10 +721,9 @@ public final class Physics extends Check {
       movementData.currentlyInBlock = false;
     }
 
-    // Update the player's verified location
+    // Update the player's verified position
     if (spectator || violationLevelIncrease == 0 && !boundingBoxIntersectionCurrent) {
-      Location location = new Location(player.getWorld(), receivedPositionX, receivedPositionY, receivedPositionZ, movementData.rotationYaw, movementData.rotationPitch);
-      movementData.setVerifiedLocation(location);
+      movementData.setVerifiedPosition(new Position(receivedPositionX, receivedPositionY, receivedPositionZ));
     }
 
     double latantDistance = 0.7;
@@ -730,7 +732,6 @@ public final class Physics extends Check {
         movementData.collidedHorizontally
         || movementData.collidedWithBoat()
         || movementData.inWeb;
-//        || movementData.ticksPast(ELYTRA_FLYING) < 20;
       if (uncommonArea) {
         violationLevelIncrease /= 2;
       } else if (protocol.aquaticUpdate()) {
@@ -951,10 +952,8 @@ public final class Physics extends Check {
       if (setback) {
         // resend attributes
         statisticApply(user, CheckStatistics::increaseFails);
-
-        MovementMetadata movement = user.meta().movement();
-        Simulator simulator = movement.simulator();
-        simulator.setback(user, movement, predictedOffsetX, predictedOffsetY, predictedOffsetZ);
+        MovementCorrection nextTick = simulation.setbackPosition(user, 0);
+        Modules.find(MovementDispatcher.class).teleports().movementCorrection(user, nextTick);
         refreshNearbyBlocks(user, positionX, positionY, positionZ);
         movementData.invalidMovement = true;
       }

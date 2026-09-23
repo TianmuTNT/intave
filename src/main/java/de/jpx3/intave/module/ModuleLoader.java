@@ -67,7 +67,6 @@ final class ModuleLoader {
 
     // mitigate
     prepareModule("de.jpx3.intave.module.mitigate.CombatMitigator", defaultBoot);
-    prepareModule("de.jpx3.intave.module.mitigate.SetbackSimulator", lateBoot);
     prepareModule("de.jpx3.intave.module.mitigate.ReconDelayLimiter", lateBoot);
 
     // dispatch
@@ -88,6 +87,7 @@ final class ModuleLoader {
     prepareModule("de.jpx3.intave.module.filter.Filters", lateBoot);
     prepareModule("de.jpx3.intave.module.player.UserLifetimeService", defaultBoot);
     prepareModule("de.jpx3.intave.module.player.StorageLoader", defaultBoot);
+    prepareModule("de.jpx3.intave.module.player.QPressDebugTracker", defaultBoot);
     prepareModule("de.jpx3.intave.module.player.PlaytimeRecorder", defaultBoot);
 //    prepareModule("de.jpx3.intave.module.player.PlaytimeUpdater", lateBoot);
     prepareModule("de.jpx3.intave.module.player.MiscBukkitEvents", defaultBoot);

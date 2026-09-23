@@ -18,6 +18,17 @@ public final class PlayerMoveReader extends AbstractPacketReader {
 		return packet().getType() == PacketType.Play.Client.VEHICLE_MOVE;
 	}
 
+	public boolean couldBeTeleport() {
+		if (packet().getType() != PacketType.Play.Client.POSITION_LOOK) {
+			return false;
+		}
+		if (onGround()) {
+			return false;
+		}
+		Boolean horizontalCollision = horizontalCollision();
+		return horizontalCollision == null || !horizontalCollision;
+	}
+
 	public double positionX() {
 		return hasNativePositionAndRotation() ? nativePositionAndRotation().x() : movements().read(0);
 	}
@@ -62,6 +73,20 @@ public final class PlayerMoveReader extends AbstractPacketReader {
 
 	public void setOnGround(boolean onGround) {
 		packet().getBooleans().write(0, onGround);
+	}
+
+	public @Nullable Boolean horizontalCollision() {
+		if (!CONTAINS_COLLISION_INFORMATION) {
+			return null;
+		}
+		return packet().getBooleans().read(1);
+	}
+
+	public void setHorizontalCollision(boolean horizontalCollision) {
+		if (!CONTAINS_COLLISION_INFORMATION) {
+			return;
+		}
+		packet().getBooleans().write(1, horizontalCollision);
 	}
 
 	public void setPositionX(double x) {

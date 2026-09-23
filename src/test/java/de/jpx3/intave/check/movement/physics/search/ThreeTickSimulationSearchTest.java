@@ -22,6 +22,7 @@ import de.jpx3.intave.check.movement.physics.simulator.Simulator;
 import de.jpx3.intave.player.collider.complex.SimulationResult;
 import de.jpx3.intave.share.Motion;
 import de.jpx3.intave.share.Position;
+import de.jpx3.intave.share.PositionMoveRotation;
 import de.jpx3.intave.share.Rotation;
 import de.jpx3.intave.test.FakePlayerFactory;
 import de.jpx3.intave.test.FakeWorldFactory;
@@ -50,6 +51,51 @@ final class ThreeTickSimulationSearchTest {
   @BeforeEach
   void setUp() {
     MinecraftVersion.setCurrent(MinecraftVersions.VER1_21_4);
+  }
+
+  @Test
+  void setbackPositionAdvancesRequestedTicksWithoutChangingLiveState() {
+    for (int ticksAhead : new int[] {0, 1, 3}) {
+      assertSetbackPosition(ticksAhead);
+    }
+  }
+
+  private void assertSetbackPosition(int ticksAhead) {
+    User user = user(VER_1_8);
+    MovementMetadata environment = user.meta().movement();
+    environment.updateMovement(POSITION, Rotation.zero());
+    environment.setVerifiedLastPosition(POSITION, "post-tick teleport test");
+    environment.setLastPosition(POSITION);
+    environment.setBaseMotion(new Motion(9, 8, 7));
+    environment.gravity = 0.08;
+    environment.setLastOnGround(false);
+    Motion input = new Motion(0.1, 0.2, 0.3);
+    Simulation simulation = Simulation.of(user, MovementConfiguration.blank(),
+      environment.immutableView(), SimulationResult.untouched(input)).reusableCopy();
+
+    PositionMoveRotation next = simulation.setbackPosition(user, ticksAhead).change();
+
+    double x = POSITION.getX() + 0.1, y = POSITION.getY() + 0.2, z = POSITION.getZ() + 0.3;
+    double motionX = 0.1 * (double) 0.91F;
+    double motionY = (0.2 - 0.08) * (double) 0.98F;
+    double motionZ = 0.3 * (double) 0.91F;
+    for (int tick = 0; tick < ticksAhead; tick++) {
+      x += motionX;
+      y += motionY;
+      z += motionZ;
+      motionX *= (double) 0.91F;
+      motionY = (motionY - 0.08) * (double) 0.98F;
+      motionZ *= (double) 0.91F;
+    }
+    assertEquals(x, next.position().getX(), 1.0E-12);
+    assertEquals(y, next.position().getY(), 1.0E-12);
+    assertEquals(z, next.position().getZ(), 1.0E-12);
+    assertEquals(motionX, next.motion().motionX(), 1.0E-12);
+    assertEquals(motionY, next.motion().motionY(), 1.0E-12);
+    assertEquals(motionZ, next.motion().motionZ(), 1.0E-12);
+    assertEquals(new Motion(0.1, 0.2, 0.3), input);
+    assertEquals(new Motion(9, 8, 7), environment.mutableBaseMotionCopy());
+    assertEquals(POSITION, environment.position());
   }
 
   @Test
@@ -167,15 +213,6 @@ final class ThreeTickSimulationSearchTest {
       return motion.copy();
     }
 
-    @Override
-    public void setback(
-      User user,
-      SimulationEnvironment environment,
-      double predictedX,
-      double predictedY,
-      double predictedZ
-    ) {
-    }
   }
 
   private static final class BlockInsideVersionAfterTickSimulator extends Simulator {
@@ -209,14 +246,5 @@ final class ThreeTickSimulationSearchTest {
       return output;
     }
 
-    @Override
-    public void setback(
-      User user,
-      SimulationEnvironment environment,
-      double predictedX,
-      double predictedY,
-      double predictedZ
-    ) {
-    }
   }
 }

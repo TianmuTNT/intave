@@ -112,6 +112,10 @@ public final class Position implements Serializable, Cloneable {
 		return distance(position.x, position.y, position.z);
 	}
 
+	public double distance(BlockPosition position) {
+		return distance(position.getX(), position.getY(), position.getZ());
+	}
+
 	public double distance(Location location) {
 		return distance(location.getX(), location.getY(), location.getZ());
 	}
@@ -252,6 +256,14 @@ public final class Position implements Serializable, Cloneable {
 		return floor(z);
 	}
 
+	public boolean isZero() {
+		return x == 0 && y == 0 && z == 0;
+	}
+
+	public double distanceTo(Position sentPosition) {
+		return distance(sentPosition);
+	}
+
 	@Override
 	public String toString() {
 		return formatDouble(x, 4) + ", " + formatDouble(y, 4) + ", " + formatDouble(z, 4);
@@ -259,6 +271,16 @@ public final class Position implements Serializable, Cloneable {
 
 	public String format(int decimalPlaces) {
 		return formatDouble(x, decimalPlaces) + ", " + formatDouble(y, decimalPlaces) + ", " + formatDouble(z, decimalPlaces);
+	}
+
+	public boolean isWithin(Position other, double distance) {
+		if (other == null) {
+			throw new IllegalArgumentException("Other position cannot be null");
+		}
+		if (distance < 0) {
+			throw new IllegalArgumentException("Distance cannot be negative");
+		}
+		return distanceSquared(other) <= distance * distance;
 	}
 
 	@Override

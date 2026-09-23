@@ -147,11 +147,6 @@ public abstract class Simulator {
     @Immutable Motion motion
   );
 
-  public abstract void setback(
-    User user, SimulationEnvironment environment,
-    double predictedX, double predictedY, double predictedZ
-  );
-
   public float stepHeight(User user) {
     return 0.6f;
   }

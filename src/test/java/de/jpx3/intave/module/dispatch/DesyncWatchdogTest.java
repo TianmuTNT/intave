@@ -12,8 +12,13 @@
 package de.jpx3.intave.module.dispatch;
 
 import de.jpx3.intave.share.Position;
+import de.jpx3.intave.share.PositionMoveRotation;
+import de.jpx3.intave.share.Teleport;
 import de.jpx3.intave.user.meta.MovementMetadata;
 import org.junit.jupiter.api.Test;
+
+import java.util.Collections;
+import java.util.OptionalInt;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -74,14 +79,17 @@ class DesyncWatchdogTest {
   void teleportConfirmationWindowIsPending() {
     MovementMetadata movement = new MovementMetadata(null, null);
 
-    movement.awaitTeleport = true;
+    assertFalse(DesyncWatchdog.teleportPending(movement));
+    movement.pendingTeleports.get().add(new Teleport(0, OptionalInt.of(1),
+      PositionMoveRotation.noMotionRelativePosition(new Position(1, 2, 3)), Collections.emptySet()));
     assertTrue(DesyncWatchdog.teleportPending(movement));
 
-    movement.awaitTeleport = false;
-    movement.awaitOutgoingTeleport = true;
+    movement.pendingTeleports.get().add(new Teleport(1, OptionalInt.of(2),
+      PositionMoveRotation.noMotionRelativePosition(new Position(4, 5, 6)), Collections.emptySet()));
+    movement.pendingTeleports.get().removeFirst();
     assertTrue(DesyncWatchdog.teleportPending(movement));
 
-    movement.awaitOutgoingTeleport = false;
+    movement.pendingTeleports.get().removeFirst();
     assertFalse(DesyncWatchdog.teleportPending(movement));
   }
 

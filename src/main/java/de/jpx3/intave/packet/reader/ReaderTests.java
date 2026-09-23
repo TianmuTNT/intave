@@ -28,6 +28,7 @@ import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
+import de.jpx3.intave.adapter.MinecraftVersion;
 import de.jpx3.intave.adapter.MinecraftVersions;
 import de.jpx3.intave.entity.size.HitboxSize;
 import de.jpx3.intave.entity.type.EntityTypeData;
@@ -53,6 +54,62 @@ public final class ReaderTests extends IntegrationTests {
 
   public ReaderTests() {
     super("PR");
+  }
+
+  @Test(testCode = "entity-velocity-native", severity = Severity.ERROR)
+  public void testNativeEntityVelocityConversion() throws ReflectiveOperationException {
+    if (!MinecraftVersion.current().isAtLeast(new MinecraftVersion("1.21.11"))) return;
+    de.jpx3.intave.share.Motion expected = new de.jpx3.intave.share.Motion(0.125D, -0.7D, 1.5D);
+    Class<?> vectorType = Class.forName("net.minecraft.world.phys.Vec3");
+    Object nativeVector = vectorType.getConstructor(double.class, double.class, double.class)
+      .newInstance(expected.motionX(), expected.motionY(), expected.motionZ());
+    Object handle = Class.forName("net.minecraft.network.protocol.game.ClientboundSetEntityMotionPacket")
+      .getConstructor(int.class, vectorType).newInstance(42, nativeVector);
+    EntityVelocityReader reader = new EntityVelocityReader();
+    reader.enter(PacketContainer.fromPacket(handle));
+    try (EntityVelocityReader acquired = reader) {
+      assertEquals(42, acquired.entityId());
+      assertEquals(expected.motionX(), acquired.motionX());
+      assertEquals(expected.motionY(), acquired.motionY());
+      assertEquals(expected.motionZ(), acquired.motionZ());
+      assertEquals(expected, acquired.motion());
+    }
+  }
+
+  @Test(testCode = "silent-explosion", severity = Severity.ERROR)
+  public void testSilentExplosion() {
+    PacketContainer packet = ProtocolLibrary.getProtocolManager().createPacket(PacketType.Play.Server.EXPLOSION);
+    de.jpx3.intave.share.Motion motion = new de.jpx3.intave.share.Motion(0.123456789, -0.7, 0.5);
+    boolean modern = MinecraftVersions.VER1_21_2.atOrAbove();
+    try (ExplosionReader reader = PacketReaders.readerOf(packet)) {
+      reader.setSilentDefaults();
+      reader.setMotion(motion);
+    }
+    try (ExplosionReader reader = PacketReaders.readerOf(packet)) {
+      assertEquals(modern ? motion.motionX() : (double) (float) motion.motionX(), reader.motion().motionX());
+      assertEquals(modern ? motion.motionY() : (double) (float) motion.motionY(), reader.motion().motionY());
+      assertEquals(modern ? motion.motionZ() : (double) (float) motion.motionZ(), reader.motion().motionZ());
+      reader.setSilentDefaults();
+      assertEquals(modern ? motion.motionY() : (double) (float) motion.motionY(), reader.motion().motionY());
+      reader.setMotion(new de.jpx3.intave.share.Motion());
+      assertEquals(0.0D, reader.motion().motionY());
+    }
+    if (modern) {
+      assertEquals(-1.0E9D, packet.getVectors().read(0).getY());
+      if (packet.getFloat().size() > 0) {
+        assertEquals(0.0F, packet.getFloat().read(0));
+        assertEquals(0, packet.getIntegers().read(0));
+        assertNotNull(packet.getModifier().read(6));
+      }
+      if (packet.getBooleans().size() > 0) assertEquals(false, packet.getBooleans().read(0));
+    } else {
+      assertEquals(-1.0E9D, packet.getDoubles().read(1));
+      assertEquals(0.0F, packet.getFloat().read(0));
+      assertEquals(0, packet.getBlockPositionCollectionModifier().read(0).size());
+    }
+    if (MinecraftVersions.VER1_20_2.atOrAbove()) {
+      for (int i = 0; i < packet.getNewParticles().size(); i++) assertNotNull(packet.getNewParticles().read(i));
+    }
   }
 
   @Test(testCode = "block-ack-routing", severity = Severity.ERROR)
@@ -519,7 +576,7 @@ public final class ReaderTests extends IntegrationTests {
 
   @Test(testCode = "native-dig", severity = Severity.ERROR)
   public void testNativeDigActions() throws ReflectiveOperationException {
-    if (MinecraftVersions.VER26_2.below()) return;
+    if (new MinecraftVersion("1.21.11").below()) return;
     PacketContainer packet = new PacketContainer(PacketType.Play.Client.BLOCK_DIG);
     BlockPosition position = new BlockPosition(-17, 64, 33);
     packet.getBlockPositionModifier().write(0, position);
@@ -536,6 +593,7 @@ public final class ReaderTests extends IntegrationTests {
       }
       try (BlockDigReader reader = PacketReaders.readerOf(packet)) {
         if (reader.action() != expected) fail("Incorrect digging action for " + name);
+        assertEquals("STAB".equals(name), reader.isStab());
         assertEquals(position, reader.blockPosition());
         assertEquals(new de.jpx3.intave.share.BlockPosition(-17, 64, 33), reader.nativeBlockPosition());
       }

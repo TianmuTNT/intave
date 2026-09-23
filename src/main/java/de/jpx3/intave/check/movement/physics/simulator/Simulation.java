@@ -12,10 +12,13 @@
 package de.jpx3.intave.check.movement.physics.simulator;
 
 import de.jpx3.intave.check.movement.physics.config.MovementConfiguration;
+import de.jpx3.intave.block.tick.BlockTickEntities;
 import de.jpx3.intave.check.movement.physics.environment.SimulationEnvironment;
 import de.jpx3.intave.player.collider.complex.SimulationResult;
 import de.jpx3.intave.share.Motion;
+import de.jpx3.intave.share.MovementCorrection;
 import de.jpx3.intave.share.Position;
+import de.jpx3.intave.share.PositionMoveRotation;
 import de.jpx3.intave.user.ThreadUserLocal;
 import de.jpx3.intave.user.User;
 
@@ -123,6 +126,34 @@ public final class Simulation {
 
   public Position postTickPosition() {
     return environment.verifiedLastPosition().add(offsetMotion());
+  }
+
+  public MovementCorrection setbackPosition(User user, int ticksAhead) {
+    if (ticksAhead < 0) {
+      throw new IllegalArgumentException("ticksAhead must not be negative");
+    }
+    MovementConfiguration nextConfiguration = configuration;
+    SimulationEnvironment next = environment.mutableView();
+    Position position = postTickPosition();
+    next.updateMovement(position, null);
+    next.setLastPosition(environment.verifiedLastPosition());
+    next.assumeOccurred(this);
+    Motion motion = next.simulator().simulateAfterTick(
+      user, next, configuration, position, actualMotion().copy()
+    );
+    motion = BlockTickEntities.tick(user, next, position, motion);
+    next.clearPostTickMotionCandidates();
+    next.setBaseMotion(motion);
+    next.setLastOnGround(next.onGround());
+    next.setVerifiedLastPosition(next.position(), "Future tick simulation");
+    for (int tick = 0; tick < ticksAhead; tick++) {
+      next.tickComplete(false, false, false);
+      next.simulator().simulateBetween(user, next, nextConfiguration);
+    }
+    return new MovementCorrection(
+      new PositionMoveRotation(Position.mutableCopy(next.position()),
+      next.mutableBaseMotionCopy(), next.rotation()), next.onGround()
+    );
   }
 
   public Motion offsetMotion() {
