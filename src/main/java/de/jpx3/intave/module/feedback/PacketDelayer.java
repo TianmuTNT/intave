@@ -138,13 +138,14 @@ public final class PacketDelayer extends Module {
       return;
     }
 
+    long now = System.currentTimeMillis();
     long playerLatencyGain = connection.transactionPingAverage() - LatencyStudy.pingAverage();
     boolean lowToleranceMode = lowTolerance && user.trustFactor().atOrBelow(RED);
     boolean significantPingGain = playerLatencyGain * (lowToleranceMode ? 1.5 : 1) > user.trustFactorSetting("timer.pg"); // ping gain
-    boolean delayRequested = System.currentTimeMillis() - connection.lastDelayRequest < 60 * 1000;
+    boolean delayRequested = now - connection.lastDelayRequest < 60 * 1000;
     boolean delayPackets = significantPingGain || delayRequested;
 
-    long lastMovementPacket = System.currentTimeMillis() - connection.lastMovementPacket();
+    long lastMovementPacket = now - connection.lastMovementPacket();
     long oldestTransactionPacket = oldestPendingTransaction(user);
     long positionTimeoutTolerance = protocol.emptyFlyingPacketsAreExplicitlySent() ? 0 : 1100;
 
@@ -174,15 +175,15 @@ public final class PacketDelayer extends Module {
     boolean requestBuffer = (transactionTimeout || positionTimeout);
 
     if (!requestBuffer && connection.lastBlinkState) {
-      connection.blinkDeactivated = System.currentTimeMillis();
+      connection.blinkDeactivated = now;
     }
     connection.lastBlinkState = requestBuffer;
 
     long afterBlink = enqueuedPackets.size() > 500 ? 750 : 250;
-    long sinceLastRespawn = System.currentTimeMillis() - connection.lastRespawn;
+    long sinceLastRespawn = now - connection.lastRespawn;
 
     boolean activatePacketBuffer = !player.isDead() && !tooManyPackets && sinceLastRespawn > 3000
-      && (requestBuffer || (System.currentTimeMillis() - connection.blinkDeactivated < afterBlink));
+      && (requestBuffer || (now - connection.blinkDeactivated < afterBlink));
 
     if (activatePacketBuffer && reverseBlink) {
       // put all delayed packets into the enqueuedPacket queue
@@ -194,10 +195,10 @@ public final class PacketDelayer extends Module {
         }
       }
       if (enqueuedPackets.isEmpty()) {
-        connection.firstEnqueue = System.currentTimeMillis();
+        connection.firstEnqueue = now;
       }
       enqueuedPackets.offerLast(packetContainer.getHandle());
-      connection.lastBufferEnqueue = System.currentTimeMillis();
+      connection.lastBufferEnqueue = now;
       event.setCancelled(true);
     } else if (!enqueuedPackets.isEmpty()) {
       int enqueuedPacketAmount = enqueuedPackets.size();
@@ -231,9 +232,9 @@ public final class PacketDelayer extends Module {
           }
         }
       }
-      if (connection.lastBufferNotification + 30000 < System.currentTimeMillis()) {
-        connection.lastBufferNotification = System.currentTimeMillis();
-        long delay = System.currentTimeMillis() - connection.firstEnqueue;
+      if (connection.lastBufferNotification + 30000 < now) {
+        connection.lastBufferNotification = now;
+        long delay = now - connection.firstEnqueue;
         String message = player.getName() + " got " + enqueuedPacketAmount + " packets buffered ("+delay+"ms).";
         String shortMessage = player.getName() + " " + enqueuedPacketAmount + " packets halted";
         MessageSeverity severity = enqueuedPacketAmount > 1000 ? MessageSeverity.MEDIUM : MessageSeverity.LOW;
@@ -244,8 +245,8 @@ public final class PacketDelayer extends Module {
 //        }
 //        Bukkit.broadcastMessage(message);
       }
-      connection.lastBufferEnqueue = System.currentTimeMillis();
-      connection.timestampRequiredForAttack = System.currentTimeMillis() + 250;
+      connection.lastBufferEnqueue = now;
+      connection.timestampRequiredForAttack = now + 250;
     } else if (!delayedPackets.isEmpty()) {
       DelayedPacket obj;
       while ((obj = delayedPackets.poll()) != null) {
@@ -266,8 +267,8 @@ public final class PacketDelayer extends Module {
       connection.lastDelaySlot = scheduledTime;
       delayedPackets.add(new DelayedPacket(packetContainer.getHandle(), scheduledTime));
       event.setCancelled(true);
-      if (connection.lastDelayNotification + 30000 < System.currentTimeMillis()) {
-        connection.lastDelayNotification = System.currentTimeMillis();
+      if (connection.lastDelayNotification + 30000 < now) {
+        connection.lastDelayNotification = now;
         String message = player.getName() + " is being delayed by " + requestedDelay + "ms.";
 //        SibylBroadcast.broadcast(message);
         String shortMessage = player.getName() + " " + requestedDelay + "ms delayed";
