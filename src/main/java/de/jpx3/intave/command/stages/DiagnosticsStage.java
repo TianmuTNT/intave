@@ -581,11 +581,11 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
   public void teleportSpam(User user) {
     Player player = user.player();
     MovementMetadata movement = user.meta().movement();
-    user.sendMessage(ChatColor.RED + "Logout to stop");
+    user.sendMessage(ChatColor.RED + "Sneak to stop");
 
     Task[] task = new Task[1];
     task[0] = Tasks.periodicNamed("Diagnostics.teleportSpam", () -> {
-      if (!player.isOnline()) {
+      if (player.isSneaking()) {
         task[0].cancel();
         return;
       }
@@ -631,11 +631,11 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
   )
   public void velocitySpam(User user) {
     Player player = user.player();
-    user.sendMessage(ChatColor.RED + "Logout to stop");
+    user.sendMessage(ChatColor.RED + "Sneak to stop");
 
     Task[] task = new Task[1];
     task[0] = Tasks.periodicNamed("Diagnostics.velocitySpam", () -> {
-      if (!player.isOnline()) {
+      if (player.isSneaking()) {
         task[0].cancel();
         return;
       }
@@ -655,11 +655,11 @@ public final class DiagnosticsStage extends CommandStage implements BukkitEventS
   )
   public void flyingSwitch(User user) {
     Player player = user.player();
-    user.sendMessage(ChatColor.RED + "Logout to stop");
+    user.sendMessage(ChatColor.RED + "Sneak to stop");
 
     Task[] task = new Task[1];
     task[0] = Tasks.periodicNamed("Diagnostics.flyingSwitch", () -> {
-      if (!player.isOnline()) {
+      if (player.isSneaking()) {
         task[0].cancel();
         return;
       }
