@@ -1,50 +1,55 @@
+/*
+ * Copyright 2026 Intave
+ *
+ * This software is licensed under the PolyForm Perimeter License 1.0.0.
+ * You may use this software for any purpose, except for providing to
+ * others any product that competes with the software.
+ *
+ * A copy of the license is available at:
+ *   https://polyformproject.org/licenses/perimeter/1.0.0/
+ */
+
 package de.jpx3.intave.packet.reader;
 
+import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.ProtocolLibrary;
+import com.comphenix.protocol.events.PacketContainer;
+import com.comphenix.protocol.events.PacketEvent;
+import com.comphenix.protocol.wrappers.BlockPosition;
+import com.comphenix.protocol.wrappers.EnumWrappers;
+import com.comphenix.protocol.wrappers.Pair;
 import de.jpx3.intave.IntavePlugin;
+import de.jpx3.intave.adapter.MinecraftVersion;
+import de.jpx3.intave.adapter.MinecraftVersions;
+import de.jpx3.intave.adapter.ProtocolLibraryAdapter;
 import de.jpx3.intave.block.cache.BlockCache;
 import de.jpx3.intave.block.cache.BlockCaches;
 import de.jpx3.intave.check.world.InteractionRaytrace;
 import de.jpx3.intave.check.world.interaction.Interaction;
 import de.jpx3.intave.check.world.interaction.InteractionType;
+import de.jpx3.intave.entity.size.HitboxSize;
+import de.jpx3.intave.entity.type.EntityTypeData;
+import de.jpx3.intave.module.dispatch.AttackDispatcher;
 import de.jpx3.intave.module.feedback.EmptyFeedbackCallback;
 import de.jpx3.intave.module.linker.packet.ForwardingPacketAdapter;
+import de.jpx3.intave.module.tracker.entity.Entity;
+import de.jpx3.intave.packet.converter.PositionAndRotationConverter;
+import de.jpx3.intave.share.Position;
+import de.jpx3.intave.share.PositionAndRotation;
 import de.jpx3.intave.test.FakePlayerFactory;
+import de.jpx3.intave.test.IntegrationTests;
+import de.jpx3.intave.test.Severity;
+import de.jpx3.intave.test.Test;
 import de.jpx3.intave.user.User;
 import de.jpx3.intave.user.UserFactory;
 import de.jpx3.intave.user.UserRepository;
+import de.jpx3.intave.version.ServerProtocolVersion;
 import org.bukkit.Bukkit;
-import java.util.ArrayList;
-
-import com.comphenix.protocol.PacketType;
-import com.comphenix.protocol.events.PacketContainer;
-import com.comphenix.protocol.wrappers.EnumWrappers;
-import com.comphenix.protocol.wrappers.BlockPosition;
-import com.comphenix.protocol.events.PacketEvent;
-import de.jpx3.intave.module.dispatch.AttackDispatcher;
-import com.comphenix.protocol.wrappers.Pair;
-import de.jpx3.intave.adapter.ProtocolLibraryAdapter;
 import org.bukkit.Material;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 
-import de.jpx3.intave.adapter.MinecraftVersion;
-import de.jpx3.intave.adapter.MinecraftVersions;
-import de.jpx3.intave.entity.size.HitboxSize;
-import de.jpx3.intave.entity.type.EntityTypeData;
-import de.jpx3.intave.module.tracker.entity.Entity;
-import de.jpx3.intave.share.Position;
-import de.jpx3.intave.share.PositionAndRotation;
-import de.jpx3.intave.packet.converter.PositionAndRotationConverter;
-import de.jpx3.intave.version.ServerProtocolVersion;
-import de.jpx3.intave.test.IntegrationTests;
-import de.jpx3.intave.test.Severity;
-import de.jpx3.intave.test.Test;
-
-import java.util.HashSet;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public final class ReaderTests extends IntegrationTests {
   private static final Set<PacketType> EXCLUDED_TYPES = new HashSet<>();
@@ -54,6 +59,54 @@ public final class ReaderTests extends IntegrationTests {
 
   public ReaderTests() {
     super("PR");
+  }
+
+  @Test(testCode = "player-info-null-profile", severity = Severity.ERROR)
+  public void testPlayerInfoEntriesWithNullProfiles() throws ReflectiveOperationException {
+    if (MinecraftVersions.VER1_19_3.below()) return;
+
+    UUID profileId = UUID.randomUUID();
+    Object entry = MinecraftVersion.current().equals(new MinecraftVersion("1.21.11"))
+      ? nativePlayerInfoEntry(profileId)
+      : new SyntheticPlayerInfoEntry(profileId, null);
+    List<PlayerInfoReader.PlayerInfoEntry> entries = PlayerInfoReader.inspectEntries(
+      Arrays.asList(entry), true
+    );
+    assertNotNull(entries);
+    assertEquals(profileId, entries.get(0).profileId());
+
+    PacketContainer packet = new PacketContainer(PacketType.Play.Server.PLAYER_INFO);
+    packet.getModifier().withType(List.class).write(0, new ArrayList<>(Arrays.asList(entry)));
+    try (PlayerInfoReader reader = PacketReaders.readerOf(packet)) {
+      List<PlayerInfoReader.PlayerInfoEntry> packetEntries = reader.playerInfoEntries();
+      assertNotNull(packetEntries);
+      assertEquals(profileId, packetEntries.get(0).profileId());
+      assertTrue(reader.writePlayerInfoEntries(packetEntries));
+      assertSame(entry, ((List<?>) packet.getModifier().withType(List.class).read(0)).get(0));
+    }
+
+    assertNull(PlayerInfoReader.inspectEntries(null, true));
+    assertNull(PlayerInfoReader.inspectEntries(Arrays.asList(entry, null), true));
+    assertNull(PlayerInfoReader.inspectEntries(Arrays.asList(new SyntheticPlayerInfoEntry(null, null)), true));
+  }
+
+  private Object nativePlayerInfoEntry(UUID profileId) throws ReflectiveOperationException {
+    Class<?> entryType = Class.forName("net.minecraft.network.protocol.game.ClientboundPlayerInfoUpdatePacket$Entry");
+    return entryType.getConstructor(
+      UUID.class, Class.forName("com.mojang.authlib.GameProfile"), boolean.class, int.class,
+      Class.forName("net.minecraft.world.level.GameType"), Class.forName("net.minecraft.network.chat.Component"),
+      boolean.class, int.class, Class.forName("net.minecraft.network.chat.RemoteChatSession$Data")
+    ).newInstance(profileId, null, false, 35, null, null, false, 0, null);
+  }
+
+  private static final class SyntheticPlayerInfoEntry {
+    private final UUID profileId;
+    private final Object profile;
+
+    private SyntheticPlayerInfoEntry(UUID profileId, Object profile) {
+      this.profileId = profileId;
+      this.profile = profile;
+    }
   }
 
   @Test(testCode = "entity-velocity-native", severity = Severity.ERROR)

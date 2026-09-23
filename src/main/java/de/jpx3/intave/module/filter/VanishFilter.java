@@ -1,9 +1,19 @@
+/*
+ * Copyright 2026 Intave
+ *
+ * This software is licensed under the PolyForm Perimeter License 1.0.0.
+ * You may use this software for any purpose, except for providing to
+ * others any product that competes with the software.
+ *
+ * A copy of the license is available at:
+ *   https://polyformproject.org/licenses/perimeter/1.0.0/
+ */
+
 package de.jpx3.intave.module.filter;
 
 import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.wrappers.EnumWrappers;
-import com.comphenix.protocol.wrappers.PlayerInfoData;
 import com.google.common.collect.Lists;
 import de.jpx3.intave.IntavePlugin;
 import de.jpx3.intave.module.linker.packet.ListenerPriority;
@@ -11,12 +21,14 @@ import de.jpx3.intave.module.linker.packet.PacketSubscription;
 import de.jpx3.intave.module.linker.packet.PrioritySlot;
 import de.jpx3.intave.packet.reader.PacketReaders;
 import de.jpx3.intave.packet.reader.PlayerInfoReader;
+import de.jpx3.intave.packet.reader.PlayerInfoReader.PlayerInfoEntry;
 import de.jpx3.intave.packet.reader.PlayerInfoRemoveReader;
 import de.jpx3.intave.user.User;
 import de.jpx3.intave.user.UserRepository;
 import de.jpx3.intave.user.meta.ProtocolMetadata;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Cancellable;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -34,68 +46,49 @@ public final class VanishFilter extends Filter {
   @PacketSubscription(
     packetsOut = {PLAYER_INFO}
   )
-  public void on(PacketEvent event) {
-    Player player = event.getPlayer();
-    PacketContainer packet = event.getPacket();
-//    System.out.println("Player info packet: " + packet);
-
+  public void on(Player player, Cancellable cancellable, PlayerInfoReader reader) {
+    if (player == null) {
+      return;
+    }
     User user = UserRepository.userOf(player);
     ProtocolMetadata protocol = user.meta().protocol();
     Set<UUID> shownPlayers = protocol.shownPlayers;
 
-    PlayerInfoReader reader = PacketReaders.readerOf(packet);
     Set<EnumWrappers.PlayerInfoAction> actions = reader.playerInfoActions();
-    List<PlayerInfoData> playerInfos = reader.playerInfoData();
+    if (actions.isEmpty() || actions.contains(null)) {
+      return;
+    }
+    List<PlayerInfoEntry> playerInfos = reader.playerInfoEntries();
+    if (playerInfos == null) {
+      return;
+    }
+    Set<UUID> updatedShownPlayers = new HashSet<>(shownPlayers);
 
     for (EnumWrappers.PlayerInfoAction action : actions) {
       switch (action) {
         case ADD_PLAYER:
-          playerInfos.forEach(data -> {
-            UUID uuid = data.getProfile().getUUID();
-            if (shownPlayers.contains(uuid)) {
-              return;
-            }
-//            Synchronizer.synchronize(() -> {
-//              player.sendMessage("Showing " + data.getProfile().getName() + " to you.");
-//            });
-//            System.out.println("Showing " + data.getProfile().getName() + " to you.");
-            shownPlayers.add(uuid);
-          });
+          playerInfos.forEach(data -> updatedShownPlayers.add(data.profileId()));
           break;
         case UPDATE_GAME_MODE:
         case UPDATE_LATENCY:
-          playerInfos.removeIf(playerInfo -> {
-            UUID infoId = playerInfo.getProfile().getUUID();
-            boolean toBeRemoved = !shownPlayers.contains(infoId);
-            if (toBeRemoved) {
-//              System.out.println("Hiding " + playerInfo.getProfile().getName() + " from " + player.getName());
-            }
-            return toBeRemoved;
-          });
+          playerInfos.removeIf(data -> !updatedShownPlayers.contains(data.profileId()));
           break;
         case REMOVE_PLAYER:
-          playerInfos.removeIf(playerInfoData -> {
-            UUID uuid = playerInfoData.getProfile().getUUID();
-            boolean wasVisible = shownPlayers.remove(uuid);
-//            System.out.println("Hiding " + playerInfoData.getProfile().getName() + " from you (was visible: "+wasVisible +")");
-//            Synchronizer.synchronize(() -> {
-//              player.sendMessage("Hiding " + playerInfoData.getProfile().getName() + " from you (was visible: "+wasVisible +")");
-//            });
-            return !wasVisible;
-          });
+          playerInfos.removeIf(data -> !updatedShownPlayers.remove(data.profileId()));
           break;
       }
     }
 
     if (playerInfos.isEmpty()) {
-      event.setCancelled(true);
-//      System.out.println("Cancelled empty player info packet");
+      cancellable.setCancelled(true);
+      return;
     }
 
     Collections.shuffle(playerInfos);
-//    lists.write(0, playerInfos);
-    reader.writePlayerInfoData(playerInfos);
-    reader.release();
+    if (reader.writePlayerInfoEntries(playerInfos)) {
+      shownPlayers.clear();
+      shownPlayers.addAll(updatedShownPlayers);
+    }
   }
 
   @PacketSubscription(
