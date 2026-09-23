@@ -64,26 +64,11 @@ final class PluginSnapshot {
       try (InputStream input = Files.newInputStream(file)) {
         sha256 = hash(input, digest, buffer);
       }
-      Map<String, String> hashes = new TreeMap<>();
-      try (ZipFile jar = new ZipFile(file.toFile())) {
-        Enumeration<? extends ZipEntry> entries = jar.entries();
-        while (entries.hasMoreElements()) {
-          ZipEntry entry = entries.nextElement();
-          if (entry.isDirectory() || !entry.getName().endsWith(".class")) {
-            continue;
-          }
-          // Preserve the JAR entry path so multi-release variants have distinct keys.
-          try (InputStream input = jar.getInputStream(entry)) {
-            hashes.put(entry.getName(), hash(input, digest, buffer));
-          }
-        }
-      }
-      classSha256s = hashes;
     } catch (Exception exception) {
       warning.accept("[Cloud] Unable to collect hashes for plugin " + name + "@" + version
         + ": " + exception.getMessage());
     }
-    return new EnvironmentPlugin(name, version, sha256, classSha256s);
+    return new EnvironmentPlugin(name, version, sha256);
   }
 
   private static MessageDigest sha256Digest() {
