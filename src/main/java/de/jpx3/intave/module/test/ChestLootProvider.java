@@ -7,13 +7,17 @@ import de.jpx3.intave.module.Module;
 import de.jpx3.intave.module.linker.bukkit.BukkitEventSubscription;
 import de.jpx3.intave.user.User;
 import de.jpx3.intave.user.UserRepository;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
+import org.bukkit.World;
 import org.bukkit.block.Chest;
 import org.bukkit.entity.Player;
 import org.bukkit.event.inventory.InventoryCloseEvent;
+import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.world.WorldUnloadEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
@@ -21,20 +25,35 @@ import java.util.*;
 import java.util.concurrent.ThreadLocalRandom;
 
 public class ChestLootProvider extends Module {
-  private final Map<Player, Location> lootChests = GarbageCollector.watch(new WeakHashMap<>());
+  private final Map<Player, ChestLocation> lootChests = GarbageCollector.watch(new WeakHashMap<>());
 
   @Override
   public void disable() {
-    for (Location location : lootChests.values()) {
-      location.getBlock().setType(Material.REDSTONE_ORE);
+    for (ChestLocation location : lootChests.values()) {
+      location.restore();
     }
+    lootChests.clear();
   }
 
   @BukkitEventSubscription
   public void on(PlayerQuitEvent quit) {
-    Location remove = lootChests.remove(quit.getPlayer());
+    ChestLocation remove = lootChests.remove(quit.getPlayer());
     if (remove != null) {
-      remove.getBlock().setType(Material.REDSTONE_ORE);
+      remove.restore();
+    }
+  }
+
+  @BukkitEventSubscription
+  public void on(WorldUnloadEvent unload) {
+    lootChests.values().removeIf(chest -> chest.worldId.equals(unload.getWorld().getUID()));
+  }
+
+  @BukkitEventSubscription
+  public void on(PlayerChangedWorldEvent change) {
+    ChestLocation chest = lootChests.get(change.getPlayer());
+    if (chest != null && chest.worldId.equals(change.getFrom().getUID())) {
+      lootChests.remove(change.getPlayer());
+      chest.restore();
     }
   }
 
@@ -50,7 +69,7 @@ public class ChestLootProvider extends Module {
     location.setY(floor(location.getY()));
     location.setZ(floor(location.getZ()));
 
-    if (lootChests.containsValue(location)) {
+    if (lootChests.values().stream().anyMatch(chest -> chest.matches(location))) {
       // check player
       if (interact.getPlayer() == null) {
         return;
@@ -84,9 +103,9 @@ public class ChestLootProvider extends Module {
   public void openLootChestCommand(Player player) {
     // if player already has a loot chest, remove it
     if (lootChests.containsKey(player)) {
-      Location remove = lootChests.remove(player);
+      ChestLocation remove = lootChests.remove(player);
       if (remove != null) {
-        remove.getBlock().setType(Material.REDSTONE_ORE);
+        remove.restore();
       }
       return;
     }
@@ -99,7 +118,7 @@ public class ChestLootProvider extends Module {
     location.setY(floor(location.getY()));
     location.setZ(floor(location.getZ()));
     location.getBlock().setType(Material.CHEST);
-    lootChests.put(player, location);
+    lootChests.put(player, new ChestLocation(location));
 
     // fill the chest with loot
     Chest leChest = (Chest) location.getBlock().getState();
@@ -109,6 +128,30 @@ public class ChestLootProvider extends Module {
   private static int floor(double value) {
     int i = (int) value;
     return value < (double) i ? i - 1 : i;
+  }
+
+  private static final class ChestLocation {
+    private final UUID worldId;
+    private final int x, y, z;
+
+    private ChestLocation(Location location) {
+      this.worldId = location.getWorld().getUID();
+      this.x = location.getBlockX();
+      this.y = location.getBlockY();
+      this.z = location.getBlockZ();
+    }
+
+    private boolean matches(Location location) {
+      return worldId.equals(location.getWorld().getUID())
+        && x == location.getBlockX() && y == location.getBlockY() && z == location.getBlockZ();
+    }
+
+    private void restore() {
+      World world = Bukkit.getWorld(worldId);
+      if (world != null) {
+        world.getBlockAt(x, y, z).setType(Material.REDSTONE_ORE);
+      }
+    }
   }
 
   private Set<Material> lootTable() {
