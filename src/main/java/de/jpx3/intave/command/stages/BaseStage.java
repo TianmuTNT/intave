@@ -211,6 +211,7 @@ public final class BaseStage extends CommandStage {
     NO_SLOWDOWN(MessageChannel.DEBUG_NO_SLOWDOWN),
     BLOCK_CACHE(MessageChannel.DEBUG_BLOCK_CACHE),
     POSITION(MessageChannel.DEBUG_POSITION),
+    REACH(MessageChannel.DEBUG_REACH),
     PACKET_HOLD(MessageChannel.DEBUG_PACKET_HOLD),
     COLLISIONS(MessageChannel.DEBUG_COLLISIONS),
     NERFS(MessageChannel.DEBUG_NERFS),
