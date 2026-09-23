@@ -197,6 +197,35 @@ class RaytracingReachTest {
     }
   }
 
+  @Test
+  void tracesWithWeaponReachWithoutChangingInteractionRange() {
+    Player player = playerIn(GameMode.SURVIVAL);
+    MockFullBlockStaticPlane blocks = MockFullBlockStaticPlane.createWithHorizontalPlaneAt(-10);
+    User user = UserFactory.createTestUserFor(player, (ignored, key) -> switch (key) {
+      case "blockCache" -> blocks;
+      case "protocolVersion" -> ProtocolMetadata.VER_1_21_11;
+      default -> null;
+    });
+    UserRepository.manuallyRegisterUser(player, user);
+    try {
+      BoundingBox target = new BoundingBox(-0.3D, 0.0D, 9.5D, 0.3D, 2.0D, 10.1D);
+      assertEquals(3.0F, Raytracing.reachDistanceOf(user));
+
+      Raytrace result = Raytracing.entityRaytrace(
+        player, target, 0.0D,
+        0.0D, 0.0D, 0.0D,
+        0.0F, 0.0F, 0.0D,
+        IGNORE_BLOCKS, 12.0D
+      );
+
+      assertFalse(result.missed());
+      assertEquals(9.5D, result.reach(), 1.0E-6D);
+      assertEquals(3.0F, Raytracing.reachDistanceOf(user));
+    } finally {
+      UserRepository.unregisterUser(player);
+    }
+  }
+
   private static void addReachModifier(AbilityMetadata abilities, double amount) {
     Attribute attribute = abilities.findAttribute("player.entity_interaction_range");
     AttributeModifier modifier = AttributeModifier.newBuilder(UUID.randomUUID())
